@@ -305,9 +305,9 @@
 
     <!-- Login gate -->
     <div id="adminLogin">
-      <p class="hint" style="margin-top:0">Enter the admin password to add or edit points. The default password is <code>admin1968</code> — change it inside <code>index.html</code> (search for <code>ADMIN_PASSWORD</code>) before publishing.</p>
+      <p class="hint" style="margin-top:0">Enter the admin password to add or edit points. The default password is <code>admin1968</code> — change it to a strong passphrase using the <b>Set password</b> tool inside (available after unlocking) before publishing. The password is stored only as a PBKDF2 hash, never in plain text.</p>
       <label>Password</label>
-      <input type="password" id="adminPass" placeholder="admin1968">
+      <input type="password" id="adminPass" placeholder="admin1968" autocomplete="off">
       <button class="btn primary" id="btnLogin" style="margin-top:12px;width:100%">Unlock</button>
     </div>
 
@@ -317,6 +317,7 @@
         <button class="btn primary sm" id="btnAdd">➕ Add point</button>
         <button class="btn sm" id="btnExport">⬇️ Export JSON</button>
         <button class="btn sm" id="btnImport">⬆️ Import JSON</button>
+        <button class="btn sm" id="btnChangePass">🔑 Set password</button>
         <input type="file" id="importFile" accept="application/json" style="display:none">
       </div>
       <p class="hint" id="adminStats" style="margin-top:10px"></p>
@@ -324,6 +325,28 @@
       <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
       <h3 style="font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">All points</h3>
       <div id="adminList"></div>
+
+      <!-- Change password tool -->
+      <div id="changePassForm" style="display:none;margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff">
+        <h3 style="font-size:13px;margin:0 0 6px">Set a new admin password</h3>
+        <p class="hint" style="margin-top:0">Your password is hashed with PBKDF2 (150,000 iterations). Only the hash goes into the source — the password itself can't be recovered from it.</p>
+        <label>New password (min 8 chars)</label>
+        <input type="password" id="newPass1" placeholder="A long, unique passphrase">
+        <label>Confirm password</label>
+        <input type="password" id="newPass2">
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn primary sm" id="btnGenHash">Generate hash</button>
+          <button class="btn sm ghost" id="btnCancelPass">Cancel</button>
+        </div>
+        <div id="hashResult" style="display:none;margin-top:12px">
+          <label>Copy this value and replace the AUTH_HASH line in index.html, then commit:</label>
+          <textarea id="hashOut" readonly style="min-height:64px;font-family:monospace;font-size:11px;word-break:break-all"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn primary sm" id="btnCopyHash">Copy</button>
+            <button class="btn sm" id="btnDlHash">Download auth-hash.txt</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Point editor (add/edit form) -->
@@ -392,7 +415,12 @@ const CONFIG = {
   defaultCenter:   [35.6892, 51.3890],   // Tehran
   defaultZoom:     12,
   nearbyRadiusKm:  5,
-  ADMIN_PASSWORD:  "admin1968",          // <-- CHANGE before publishing
+  // Admin password is stored as a PBKDF2 hash, NOT plaintext.
+  // Format: "iterations:saltBase64:hashBase64"  (PBKDF2-HMAC-SHA256, 32-byte key)
+  // The value below is the hash of "admin1968". Set your own strong password
+  // with the in-app "Change password" tool (admin panel), then paste the
+  // generated string here and commit. The hash cannot be reversed.
+  AUTH_HASH: "150000:FQWfZbchNdQgcGNCfal8uw==:K08eN2VOEwTAqQ5Nj8NAlE7wisZGCUC+W3ynN4E5UW0=",
   STORAGE_KEY:     "tehran1968_points_v1",
   LS_FLAG:         "tehran1968_has_local_edits",
 };
@@ -584,11 +612,11 @@ function saveLocal(){
 function renderMarkers(){
   markersLayer.clearLayers();
   allPoints.forEach(p=>{
-    const cat = CATEGORIES[p.category]||CATEGORIES.other;
-    const m = L.marker([p.lat,p.lng],{icon:pinIcon(p.category, p.id===selectedMarkerId)});
+    const m = L.marker([p.lat,p.lng],{icon:pinIcon(p.category)});
     m.bindPopup(popupHtml(p), {maxWidth:280});
-    m.on("popupopen",()=>{ selectedMarkerId=p.id; renderMarkers(); });
-    m.on("popupclose",()=>{ /* keep selection while open */ });
+    // NOTE: do NOT re-render markers on popupopen — clearLayers() here would
+    // destroy the marker and its popup the instant it opens, making popups
+    // appear to do nothing when a pin is clicked.
     m.addTo(markersLayer);
   });
 }
@@ -687,17 +715,112 @@ function closePanels(){
 }
 
 /* ===== Admin ===== */
-function tryLogin(){
+/* PBKDF2 password verification.
+   authHash format: "iterations:saltBase64:hashBase64" (PBKDF2-HMAC-SHA256, 256-bit key). */
+function base64ToBuf(b64){
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return u8;
+}
+function bufToBase64(buf){
+  const u8 = new Uint8Array(buf);
+  let bin="";
+  for(let i=0;i<u8.length;i++) bin+=String.fromCharCode(u8[i]);
+  return btoa(bin);
+}
+function constantTimeEq(a,b){
+  if(a.length!==b.length) return false;
+  let diff=0;
+  for(let i=0;i<a.length;i++) diff|=a.charCodeAt(i)^b.charCodeAt(i);
+  return diff===0;
+}
+async function verifyPassword(pass, authHash){
+  const parts = authHash.split(":");
+  if(parts.length!==3) throw new Error("Bad AUTH_HASH format");
+  const iterations = parseInt(parts[0],10);
+  const salt = base64ToBuf(parts[1]);
+  const expected = parts[2];
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits"]
+  );
+  const derived = await crypto.subtle.deriveBits(
+    {name:"PBKDF2", salt, iterations, hash:"SHA-256"}, key, 256
+  );
+  return constantTimeEq(bufToBase64(derived), expected);
+}
+
+async function tryLogin(){
   const pass = $("adminPass").value;
-  if(pass === CONFIG.ADMIN_PASSWORD){
-    adminUnlocked = true;
-    $("adminLogin").style.display = "none";
-    $("adminWork").style.display = "block";
-    renderAdminList();
-    toast("Admin unlocked.");
-  }else{
-    toast("Wrong password.",true);
+  if(!pass){ toast("Enter a password.",true); return; }
+  const btn = $("btnLogin");
+  btn.disabled = true; btn.textContent = "Checking…";
+  try{
+    const ok = await verifyPassword(pass, CONFIG.AUTH_HASH);
+    if(ok){
+      adminUnlocked = true;
+      $("adminLogin").style.display = "none";
+      $("adminWork").style.display = "block";
+      renderAdminList();
+      toast("Admin unlocked.");
+    }else{
+      toast("Wrong password.",true);
+    }
+  }catch(e){
+    toast("Login error: "+e.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = "Unlock";
   }
+}
+
+/* Change-password: derive a fresh PBKDF2 hash for a chosen password. */
+async function generateNewHash(){
+  const p1 = $("newPass1").value, p2 = $("newPass2").value;
+  if(p1.length < 8){ toast("Use at least 8 characters.",true); return; }
+  if(p1 !== p2){ toast("Passwords don't match.",true); return; }
+  const btn = $("btnGenHash");
+  btn.disabled = true; btn.textContent = "Generating…";
+  try{
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iterations = 150000;
+    const key = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(p1), "PBKDF2", false, ["deriveBits"]
+    );
+    const derived = await crypto.subtle.deriveBits(
+      {name:"PBKDF2", salt, iterations, hash:"SHA-256"}, key, 256
+    );
+    const hashStr = `${iterations}:${bufToBase64(salt)}:${bufToBase64(derived)}`;
+    $("hashOut").value = hashStr;
+    $("hashResult").style.display = "block";
+    toast("Hash generated — copy it into index.html.");
+  }catch(e){
+    toast("Error: "+e.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = "Generate hash";
+  }
+}
+function copyHash(){
+  const v = $("hashOut").value;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(v).then(()=>toast("Copied to clipboard."));
+  }else{
+    $("hashOut").select(); document.execCommand("copy"); toast("Copied.");
+  }
+}
+function downloadHash(){
+  const v = $("hashOut").value;
+  const txt =
+    "Replace the AUTH_HASH line in index.html with the value below, then commit.\n\n" +
+    "AUTH_HASH: \"" + v + "\"\n\n" +
+    "Keep this secret only matters insofar as the hash is in your source; the password " +
+    "itself cannot be recovered from it.\n";
+  const blob = new Blob([txt], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "auth-hash.txt";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast("Downloaded auth-hash.txt.");
 }
 
 function renderAdminList(){
@@ -889,6 +1012,17 @@ function wireEvents(){
   $("importFile").onchange = (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
   $("btnSave").onclick = savePoint;
   $("btnCancelForm").onclick = hideForm;
+
+  // Change-password tool
+  $("btnChangePass").onclick = ()=>{
+    const f = $("changePassForm");
+    f.style.display = (f.style.display==="none") ? "block" : "none";
+    if(f.style.display==="block"){ $("newPass1").value=""; $("newPass2").value=""; $("hashResult").style.display="none"; }
+  };
+  $("btnGenHash").onclick = generateNewHash;
+  $("btnCancelPass").onclick = ()=>$("changePassForm").style.display="none";
+  $("btnCopyHash").onclick = copyHash;
+  $("btnDlHash").onclick = downloadHash;
 }
 
 /* ===== Boot ===== */
