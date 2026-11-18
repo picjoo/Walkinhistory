@@ -181,6 +181,20 @@
   .leaflet-popup-content .photo{width:220px;max-width:100%;border-radius:6px;margin:6px 0;display:block}
   .leaflet-popup-content .year{color:var(--accent);font-weight:700;font-size:12px}
   .leaflet-popup-content .desc{color:#444;margin-top:6px}
+  /* Multi-photo gallery inside a popup */
+  .leaflet-popup-content .gallery{position:relative;width:220px;max-width:100%;margin:6px 0}
+  .leaflet-popup-content .gallery .gal-img{width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:6px;display:block;background:#f5f5f4}
+  .leaflet-popup-content .gallery .gal-img.broken{display:none}
+  .leaflet-popup-content .gal-nav{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:18px;line-height:26px;cursor:pointer;padding:0;text-align:center}
+  .leaflet-popup-content .gal-nav:hover{background:rgba(0,0,0,.8)}
+  .leaflet-popup-content .gal-prev{left:6px}
+  .leaflet-popup-content .gal-next{right:6px}
+  .leaflet-popup-content .gal-counter{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:2px 7px;border-radius:10px}
+  .leaflet-popup-content .wiki-link{display:inline-block;margin-top:10px;color:#fff;background:var(--accent);text-decoration:none;padding:7px 12px;border-radius:6px;font-size:12px;font-weight:600}
+  .leaflet-popup-content .wiki-link:hover{filter:brightness(1.08)}
+  /* Photo list editor rows */
+  #photoList .photo-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+  #photoList .photo-row input{flex:1}
 
   /* Cursor in add-point mode */
   #map.adding{cursor:crosshair}
@@ -305,9 +319,9 @@
 
     <!-- Login gate -->
     <div id="adminLogin">
-      <p class="hint" style="margin-top:0">Enter the admin password to add or edit points. The default password is <code>admin1968</code> — change it to a strong passphrase using the <b>Set password</b> tool inside (available after unlocking) before publishing. The password is stored only as a PBKDF2 hash, never in plain text.</p>
+      <p class="hint" style="margin-top:0">Enter the admin password to add or edit points. The password is stored only as a PBKDF2 hash — it is never in the page source. To change it later, use the <b>Set password</b> tool inside (available after unlocking).</p>
       <label>Password</label>
-      <input type="password" id="adminPass" placeholder="admin1968" autocomplete="off">
+      <input type="password" id="adminPass" placeholder="Enter password" autocomplete="off">
       <button class="btn primary" id="btnLogin" style="margin-top:12px;width:100%">Unlock</button>
     </div>
 
@@ -382,9 +396,14 @@
       <label>Description</label>
       <textarea id="fDesc" placeholder="History, what was here in 1968, notable facts…"></textarea>
 
-      <label>Photo URL (optional)</label>
-      <input id="fPhoto" placeholder="https://…/photo.jpg  (or images/photo.jpg in this repo)">
-      <p class="hint">Use a direct image link. To host your own, drop the file in your GitHub repo and reference it as <code>images/name.jpg</code>.</p>
+      <label>Photos (optional — add as many as you like)</label>
+      <div id="photoList"></div>
+      <button type="button" class="btn sm ghost" id="btnAddPhoto" style="margin-top:6px">➕ Add photo</button>
+      <p class="hint">Use direct image links. To host your own, drop the file in your GitHub repo and reference it as <code>images/name.jpg</code>. Visitors see them as a swipeable gallery in the popup.</p>
+
+      <label>Wikipedia page (optional)</label>
+      <input id="fWiki" placeholder="https://en.wikipedia.org/wiki/Golestan_Palace">
+      <p class="hint">If set, the popup's <b>📖 More to read</b> button opens this page. Leave blank to auto-link to a Wikipedia <i>search</i> for the place name.</p>
 
       <label>Source / credit (optional)</label>
       <input id="fSource" placeholder="Book, archive, personal record…">
@@ -420,7 +439,7 @@ const CONFIG = {
   // The value below is the hash of "admin1968". Set your own strong password
   // with the in-app "Change password" tool (admin panel), then paste the
   // generated string here and commit. The hash cannot be reversed.
-  AUTH_HASH: "150000:/Cia2toffIQmc8zvnf66lg==:6N4ZDCL3869xnY2bBfRoe0RUlp2jL68KlYp8fa1kikU=",
+  AUTH_HASH: "150000:2XwKIh+0Xtyi2IRqD/6qSw==:o4lJMxzW9KbPKfWBdDvvwFyZVi73RxrAnBWPVKB4IRA=",
   STORAGE_KEY:     "tehran1968_points_v1",
   LS_FLAG:         "tehran1968_has_local_edits",
 };
@@ -449,7 +468,13 @@ const SAMPLE_DATA = [
     lat:35.6794, lng:51.4229,
     year:1789, category:"palace",
     description:"The royal Qajar palace complex in central Tehran. By 1968 it served as a ceremonial seat and museum of the Pahlavi court, surrounding the famous Marble Throne (Takht-e Marmar) and audience halls.",
-    photo:"", source:"Sample entry — replace with verified data",
+    photos:[
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Palais_du_Golestan,%20T%C3%A9h%C3%A9ran%20(5).jpg?width=480",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/-Golestan,%20The%20Peacock%20Throne,%20Teheran,%20Iran-%20(Takht-I%20Taous)%20MET%20DP202914.jpg?width=480",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/1047.GolestanMuseum%20(1405206037).jpg?width=480"
+    ],
+    wikipedia:"https://en.wikipedia.org/wiki/Golestan_Palace",
+    source:"Sample entry — replace with verified data",
     sample:true
   },
   {
@@ -458,7 +483,8 @@ const SAMPLE_DATA = [
     lat:35.6753, lng:51.4225,
     year:1600, category:"bazaar",
     description:"A vast network of covered lanes, caravanserais and guild quarters stretching south of the Arg citadel. In 1968 it remained the commercial heart of the city, with merchants trading textiles, tea, spices, carpets and metalwork.",
-    photo:"", source:"Sample entry — replace with verified data",
+    photos:[], wikipedia:"https://en.wikipedia.org/wiki/Grand_Bazaar_of_Tehran",
+    source:"Sample entry — replace with verified data",
     sample:true
   },
   {
@@ -467,7 +493,9 @@ const SAMPLE_DATA = [
     lat:35.6886, lng:51.4319,
     year:1937, category:"museum",
     description:"Designed by André Godard and opened in 1937, this brick Sassanid-style building on Si-e Tir Street housed Iran's principal archaeological collection. In 1968 it displayed finds from Persepolis, Susa and other sites.",
-    photo:"", source:"Sample entry — replace with verified data",
+    photos:["https://commons.wikimedia.org/wiki/Special:FilePath/N%C3%A1rodn%C3%AD%20muzeum%20%C3%8Dr%C3%A1nu.jpg?width=480"],
+    wikipedia:"https://en.wikipedia.org/wiki/National_Museum_of_Iran",
+    source:"Sample entry — replace with verified data",
     sample:true
   },
   {
@@ -476,7 +504,8 @@ const SAMPLE_DATA = [
     lat:35.8103, lng:51.4253,
     year:1920, category:"palace",
     description:"Royal compound at the foot of the Alborz, developed by the Qajars and greatly expanded under Reza Shah and Mohammad Reza Pahlavi. By 1968 several palaces stood within its gardens; the Green Palace (Kakh-e Sabz) and White House were in use.",
-    photo:"", source:"Sample entry — replace with verified data",
+    photos:[], wikipedia:"https://en.wikipedia.org/wiki/Saadabad_Complex",
+    source:"Sample entry — replace with verified data",
     sample:true
   },
   {
@@ -485,7 +514,8 @@ const SAMPLE_DATA = [
     lat:35.8336, lng:51.4244,
     year:1800, category:"other",
     description:"The mountain gateway at the top of Tajrish, long the start of the trail into the Alborz. In 1968 it was already a popular summer escape with tea houses, fruit gardens and steep stone paths climbing toward Tochal.",
-    photo:"", source:"Sample entry — replace with verified data",
+    photos:[], wikipedia:"https://en.wikipedia.org/wiki/Darband,_Tehran",
+    source:"Sample entry — replace with verified data",
     sample:true
   },
   {
@@ -494,7 +524,8 @@ const SAMPLE_DATA = [
     lat:35.5917, lng:51.4394,
     year:900, category:"other",
     description:"The shrine of Abdol-Azim Hassani in the historic town of Rey, south of Tehran. A major pilgrimage site with a golden dome, courtyard and adjoining shrines of Imamzadeh Hamzeh and Naser al-Din Shah.",
-    photo:"", source:"Sample entry — replace with verified data",
+    photos:[], wikipedia:"https://en.wikipedia.org/wiki/Shah-Abdol-Azim_Shrine",
+    source:"Sample entry — replace with verified data",
     sample:true
   }
 ];
@@ -623,18 +654,55 @@ function renderMarkers(){
 
 function popupHtml(p){
   const cat = CATEGORIES[p.category]||CATEGORIES.other;
-  const photo = p.photo
-    ? `<img class="photo" src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" onerror="this.style.display='none'">`
+  const photos = pointPhotos(p);  // always an array (handles legacy "photo" string)
+  const gallery = photos.length
+    ? (photos.length===1
+        ? `<img class="photo" src="${escapeHtml(photos[0])}" alt="${escapeHtml(p.name)}" onerror="this.parentElement.style.display='none'">`
+        : `<div class="gallery" data-photos='${escapeHtml(JSON.stringify(photos))}' data-idx="0">
+             <img class="photo gal-img" src="${escapeHtml(photos[0])}" alt="${escapeHtml(p.name)}" onerror="this.classList.add('broken')">
+             <button class="gal-nav gal-prev" type="button" aria-label="Previous photo" onclick="galleryMove(this,-1)">‹</button>
+             <button class="gal-nav gal-next" type="button" aria-label="Next photo" onclick="galleryMove(this,1)">›</button>
+             <span class="gal-counter">1 / ${photos.length}</span>
+           </div>`)
     : "";
   const year = p.year ? `<span class="year">${escapeHtml(String(p.year))}</span>` : "";
   const source = p.source ? `<div class="hint" style="margin-top:6px">Source: ${escapeHtml(p.source)}</div>` : "";
+  // "More to read" — links to the Wikipedia article if set, else a search.
+  const wikiUrl = p.wikipedia && p.wikipedia.trim()
+    ? p.wikipedia.trim()
+    : `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(p.name)}`;
+  const moreToRead = `<a class="wiki-link" href="${escapeHtml(wikiUrl)}" target="_blank" rel="noopener noreferrer">📖 More to read on Wikipedia →</a>`;
   return `
     <h3>${escapeHtml(p.name)}</h3>
     <span class="badge">${cat.emoji} ${cat.label}</span> ${year}
-    ${photo}
+    ${gallery}
     <div class="desc">${escapeHtml(p.description)}</div>
     ${source}
+    ${moreToRead}
   `;
+}
+
+/* Normalise a point's photos into an array (supports legacy single "photo" string). */
+function pointPhotos(p){
+  if(Array.isArray(p.photos)) return p.photos.map(x=>String(x||"").trim()).filter(Boolean);
+  if(p.photo && String(p.photo).trim()) return [String(p.photo).trim()];
+  return [];
+}
+
+/* Carousel navigation inside a popup gallery. */
+function galleryMove(btn, delta){
+  const gal = btn.closest(".gallery");
+  if(!gal) return;
+  let photos = [];
+  try{ photos = JSON.parse(gal.getAttribute("data-photos")||"[]"); }catch(e){ return; }
+  if(photos.length<=1) return;
+  let idx = parseInt(gal.getAttribute("data-idx")||"0",10);
+  idx = (idx + delta + photos.length) % photos.length;
+  gal.setAttribute("data-idx", String(idx));
+  const img = gal.querySelector(".gal-img");
+  if(img){ img.src = photos[idx]; img.classList.remove("broken"); }
+  const counter = gal.querySelector(".gal-counter");
+  if(counter) counter.textContent = `${idx+1} / ${photos.length}`;
 }
 
 /* ===== Geolocation ===== */
@@ -835,7 +903,7 @@ function renderAdminList(){
       <div class="emoji">${cat.emoji}</div>
       <div class="meta">
         <div class="name">${escapeHtml(p.name)}${p.sample?' <span class="badge">sample</span>':""}</div>
-        <div class="sub">${p.year?escapeHtml(String(p.year))+" · ":""}${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+        <div class="sub">${p.year?escapeHtml(String(p.year))+" · ":""}${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}${pointPhotos(p).length?" · 📷"+pointPhotos(p).length:""}${p.wikipedia?" · 📖":""}</div>
       </div>
       <button class="btn sm ghost" data-edit>Edit</button>
       <button class="btn sm danger" data-del>Del</button>`;
@@ -843,6 +911,37 @@ function renderAdminList(){
     el.querySelector("[data-del]").onclick = ()=>deletePoint(p.id);
     body.appendChild(el);
   });
+}
+
+/* ===== Photo list editor (multiple photos per point) ===== */
+function addPhotoRow(url){
+  const list = $("photoList");
+  const row = document.createElement("div");
+  row.className = "photo-row";
+  const inp = document.createElement("input");
+  inp.type = "url";
+  inp.placeholder = "https://…/photo.jpg  (or images/photo.jpg)";
+  inp.value = url || "";
+  const rm = document.createElement("button");
+  rm.type = "button";
+  rm.className = "btn sm danger";
+  rm.textContent = "✕";
+  rm.title = "Remove this photo";
+  rm.onclick = ()=>{ row.remove(); };
+  row.appendChild(inp);
+  row.appendChild(rm);
+  list.appendChild(row);
+}
+function clearPhotos(){ $("photoList").innerHTML = ""; }
+function loadPhotos(arr){
+  clearPhotos();
+  (Array.isArray(arr)?arr:[]).forEach(u=>addPhotoRow(u));
+  if($("photoList").children.length===0) addPhotoRow(""); // always one empty row to start
+}
+function collectPhotos(){
+  return Array.from($("photoList").querySelectorAll("input"))
+    .map(i=>i.value.trim())
+    .filter(Boolean);
 }
 
 function enterAddMode(){
@@ -853,9 +952,11 @@ function enterAddMode(){
   addMode = true;
   $("map").classList.add("adding");
   // clear form
-  ["fName","fLat","fLng","fYear","fDesc","fPhoto","fSource"].forEach(id=>$(id).value="");
+  ["fName","fLat","fLng","fYear","fDesc","fSource"].forEach(id=>$(id).value="");
+  $("fWiki").value = "";
   $("fCat").value = "palace";
   $("fLat").value=""; $("fLng").value="";
+  loadPhotos([]);
   toast("Click the map where the historic place is.");
 }
 function exitAddMode(){
@@ -886,7 +987,8 @@ function startEdit(id){
   $("fYear").value = p.year || "";
   $("fCat").value = p.category || "other";
   $("fDesc").value = p.description || "";
-  $("fPhoto").value = p.photo || "";
+  $("fWiki").value = p.wikipedia || "";
+  loadPhotos(pointPhotos(p));
   $("fSource").value = p.source || "";
   pendingLatLng = {lat:p.lat, lng:p.lng};
 }
@@ -906,10 +1008,13 @@ function savePoint(){
     year: $("fYear").value ? parseInt($("fYear").value,10) : null,
     category: $("fCat").value,
     description: $("fDesc").value.trim(),
-    photo: $("fPhoto").value.trim(),
+    photos: collectPhotos(),
+    wikipedia: $("fWiki").value.trim(),
     source: $("fSource").value.trim(),
     sample:false
   };
+  // drop legacy single-photo field so exported data is clean
+  delete point.photo;
   if(editingId){
     const i = allPoints.findIndex(p=>p.id===editingId);
     if(i>=0) allPoints[i] = point;
@@ -1012,6 +1117,7 @@ function wireEvents(){
   $("importFile").onchange = (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
   $("btnSave").onclick = savePoint;
   $("btnCancelForm").onclick = hideForm;
+  $("btnAddPhoto").onclick = ()=>addPhotoRow("");
 
   // Change-password tool
   $("btnChangePass").onclick = ()=>{
