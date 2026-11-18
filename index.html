@@ -149,6 +149,16 @@
   .pt-item .name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pt-item .sub{font-size:11px;color:var(--muted)}
 
+  /* Overlay switcher rows (user layer panel) */
+  .overlay-list .ov-row{
+    padding:9px 10px;border:1px solid var(--line);border-radius:8px;
+    margin-bottom:7px;background:#fff;
+  }
+  .overlay-list .ov-check{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;cursor:pointer}
+  .overlay-list .ov-check span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .overlay-list .ov-slider{width:100%;margin-top:6px;accent-color:var(--accent)}
+  .overlay-list .ov-pct{font-size:11px;color:var(--muted);float:right}
+
   /* Toast */
   .toast{
     position:absolute;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
@@ -291,21 +301,9 @@
     </select>
     <p class="hint">Applies a warm sepia filter to the base map.</p>
 
-    <label style="margin-top:18px">Historic map image overlay (optional)</label>
-    <input type="text" id="overlayUrl" placeholder="https://…/tehran-1968-scan.jpg">
-    <div class="row" style="margin-top:6px">
-      <input type="number" id="overlaySouth" placeholder="South lat" step="0.0001">
-      <input type="number" id="overlayNorth" placeholder="North lat" step="0.0001">
-    </div>
-    <div class="row" style="margin-top:6px">
-      <input type="number" id="overlayWest" placeholder="West lng" step="0.0001">
-      <input type="number" id="overlayEast" placeholder="East lng" step="0.0001">
-    </div>
-    <p class="hint">If you have a scanned 1968 Tehran map, host the image (e.g. in this same GitHub repo) and enter its URL plus the lat/lng bounds of its four corners. It will overlay on the modern map.</p>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn sm primary" id="btnApplyOverlay">Apply overlay</button>
-      <button class="btn sm ghost" id="btnClearOverlay">Clear</button>
-    </div>
+    <label style="margin-top:18px">Historic map overlays</label>
+    <div id="overlayList" class="overlay-list"></div>
+    <p class="hint">Tick a map to stack it on top of the base map; drag each slider to set transparency. Add or edit overlays in the <b>⚙️ Admin</b> panel.</p>
   </div>
 </aside>
 
@@ -339,6 +337,11 @@
       <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
       <h3 style="font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">All points</h3>
       <div id="adminList"></div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+      <h3 style="font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Map overlays</h3>
+      <button class="btn primary sm" id="btnAddOverlay">🗺️ Add overlay</button>
+      <div id="overlayAdminList" style="margin-top:10px"></div>
 
       <!-- Change password tool -->
       <div id="changePassForm" style="display:none;margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff">
@@ -413,6 +416,55 @@
         <button class="btn ghost" id="btnCancelForm">Cancel</button>
       </div>
     </div>
+
+    <!-- Overlay editor (add/edit a historic map overlay) -->
+    <div id="overlayForm" style="display:none;margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff">
+      <h3 style="font-size:14px;margin:0 0 8px" id="overlayFormTitle">Add overlay</h3>
+
+      <label>Name</label>
+      <input id="ovName" placeholder="e.g. Tehran 1968 — US Army Map Service">
+
+      <div class="row">
+        <div><label>Type</label>
+          <select id="ovType">
+            <option value="tile">Tile layer (XYZ — best for Georeferencer)</option>
+            <option value="image">Scanned image + corner bounds</option>
+            <option value="geotiff">GeoTIFF file (.tif)</option>
+          </select>
+        </div>
+        <div><label>Default on for visitors</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer"><input type="checkbox" id="ovDefault"> Show by default</label>
+        </div>
+      </div>
+
+      <label id="ovUrlLabel">Tile URL (XYZ — contains {z}/{x}/{y})</label>
+      <input id="ovUrl" placeholder="https://tiles.georeferencer.com/abc/{z}/{x}/{y}.png">
+      <p class="hint" id="ovUrlHint"></p>
+
+      <div id="ovBoundsRow" style="display:none">
+        <label>Corner bounds (lat/lng of the image edges)</label>
+        <div class="row" style="margin-top:6px">
+          <input type="number" id="ovSouth" placeholder="South lat" step="0.0001">
+          <input type="number" id="ovNorth" placeholder="North lat" step="0.0001">
+        </div>
+        <div class="row" style="margin-top:6px">
+          <input type="number" id="ovWest" placeholder="West lng" step="0.0001">
+          <input type="number" id="ovEast" placeholder="East lng" step="0.0001">
+        </div>
+      </div>
+
+      <label>Opacity <span id="ovOpacityPct" style="color:var(--muted);font-weight:400">70%</span></label>
+      <input type="range" id="ovOpacity" min="0" max="1" step="0.05" value="0.7" style="width:100%">
+
+      <label>Attribution (optional)</label>
+      <input id="ovAttribution" placeholder="e.g. © Georeferencer / US Army Map Service">
+
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn primary" id="btnSaveOverlay">💾 Save overlay</button>
+        <button class="btn sm" id="btnPreviewOverlay">👁️ Preview</button>
+        <button class="btn ghost" id="btnCancelOverlay">Cancel</button>
+      </div>
+    </div>
   </div>
 </aside>
 </div><!-- /panelHost -->
@@ -436,9 +488,9 @@ const CONFIG = {
   nearbyRadiusKm:  5,
   // Admin password is stored as a PBKDF2 hash, NOT plaintext.
   // Format: "iterations:saltBase64:hashBase64"  (PBKDF2-HMAC-SHA256, 32-byte key)
-  // The value below is the hash of "admin1968". Set your own strong password
-  // with the in-app "Change password" tool (admin panel), then paste the
-  // generated string here and commit. The hash cannot be reversed.
+  // The value below is a PBKDF2 hash of the admin passphrase. Set your own with
+  // the in-app "Set password" tool (admin panel), then paste the generated
+  // string here and commit. The hash cannot be reversed to recover the password.
   AUTH_HASH: "150000:2XwKIh+0Xtyi2IRqD/6qSw==:o4lJMxzW9KbPKfWBdDvvwFyZVi73RxrAnBWPVKB4IRA=",
   STORAGE_KEY:     "tehran1968_points_v1",
   LS_FLAG:         "tehran1968_has_local_edits",
@@ -530,16 +582,36 @@ const SAMPLE_DATA = [
   }
 ];
 
+/* Sample historic-map overlays (used only when no data.json / localStorage).
+   Replace with your own — tile URLs from Georeferencer, or paths to .tif files
+   you commit to the repo under maps/. */
+const SAMPLE_OVERLAYS = [
+  {
+    id:"ov_example_railway",
+    name:"Example overlay — replace with your historic map",
+    type:"tile",
+    url:"https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
+    opacity:0.7,
+    defaultOn:false,
+    attribution:"© OpenRailwayMap contributors"
+  }
+];
+
 /* ===== State ===== */
 let map, markersLayer, userMarker, userCircle, overlayLayer = null;
 let currentBase = null, baseLayers = {};
 let allPoints = [];
+let allOverlays = [];           // historic map overlays (admin-managed)
+let overlayLayers = {};         // id -> Leaflet layer currently on the map
+let geotiffLibs = null;         // lazy-loaded promise for georaster libs
+let previewLayer = null;        // temp layer shown by the overlay editor's Preview
 let userLatLng = null;
 let adminUnlocked = false;
 let addMode = false;
 let editingId = null;
 let pendingLatLng = null;     // clicked point while adding
 let selectedMarkerId = null;
+let editingOverlayId = null;  // id when editing an existing overlay
 
 /* ===== Utilities ===== */
 function $(id){return document.getElementById(id)}
@@ -594,6 +666,8 @@ function setBaseLayer(key){
   if(currentBase) map.removeLayer(currentBase);
   currentBase = baseLayers[key] || baseLayers.osm;
   currentBase.addTo(map);
+  // keep every active overlay above the freshly-added base layer
+  Object.values(overlayLayers).forEach(l=>{ try{ l.bringToFront(); }catch(e){} });
   if(overlayLayer) overlayLayer.bringToFront();
 }
 
@@ -611,12 +685,27 @@ function pinIcon(category, selected=false){
 }
 
 /* ===== Data loading ===== */
+/* Accepts either the new shape {points:[...], overlays:[...]} or a legacy
+   flat array of points, and sets allPoints + allOverlays accordingly. */
+function applyData(json){
+  if(Array.isArray(json)){
+    allPoints = json; allOverlays = [];
+  }else if(json && Array.isArray(json.points)){
+    allPoints = json.points;
+    allOverlays = Array.isArray(json.overlays) ? json.overlays : [];
+  }else{
+    allPoints = []; allOverlays = [];
+  }
+  allPoints.forEach(normalizePoint);
+  allOverlays.forEach(normalizeOverlay);
+}
+
 async function loadData(){
   // 1) localStorage (admin edits win)
   if(localStorage.getItem(CONFIG.LS_FLAG)==="1"){
     try{
       const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
-      if(raw){ allPoints = JSON.parse(raw); return; }
+      if(raw){ applyData(JSON.parse(raw)); return; }
     }catch(e){ console.warn("Bad local store, ignoring"); }
   }
   // 2) data.json from same folder
@@ -624,18 +713,18 @@ async function loadData(){
     const res = await fetch("data.json", {cache:"no-store"});
     if(res.ok){
       const json = await res.json();
-      if(Array.isArray(json)){ allPoints = json; return; }
+      applyData(json); return;
     }
   }catch(e){ /* file:// or 404 — fall through */ }
   // 3) embedded sample
-  allPoints = SAMPLE_DATA.slice();
+  applyData({points: SAMPLE_DATA, overlays: SAMPLE_OVERLAYS});
   if(location.protocol==="file:"){
     toast("Opened locally — showing embedded sample data.", true);
   }
 }
 
 function saveLocal(){
-  localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(allPoints));
+  localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({points: allPoints, overlays: allOverlays}));
   localStorage.setItem(CONFIG.LS_FLAG, "1");
 }
 
@@ -687,6 +776,32 @@ function pointPhotos(p){
   if(Array.isArray(p.photos)) return p.photos.map(x=>String(x||"").trim()).filter(Boolean);
   if(p.photo && String(p.photo).trim()) return [String(p.photo).trim()];
   return [];
+}
+
+/* Ensure a point has a photos[] array (migrates legacy single "photo" string). */
+function normalizePoint(p){
+  if(!p) return p;
+  p.photos = pointPhotos(p);
+  delete p.photo;
+  if(typeof p.wikipedia !== "string") p.wikipedia = "";
+  return p;
+}
+
+/* Ensure an overlay has all required fields with sane defaults. */
+function normalizeOverlay(o){
+  if(!o) return o;
+  o.id = o.id || ("ov_"+Math.random().toString(36).slice(2,9));
+  o.name = o.name || "Untitled overlay";
+  o.type = (["tile","image","geotiff"].includes(o.type)) ? o.type : "tile";
+  o.url = String(o.url||"");
+  o.opacity = (typeof o.opacity==="number" && o.opacity>=0 && o.opacity<=1) ? o.opacity : 0.7;
+  o.defaultOn = !!o.defaultOn;
+  o.attribution = String(o.attribution||"");
+  // image overlays need bounds [[s,w],[n,e]]
+  if(o.type==="image"){
+    o.bounds = Array.isArray(o.bounds) && o.bounds.length===2 ? o.bounds : null;
+  }
+  return o;
 }
 
 /* Carousel navigation inside a popup gallery. */
@@ -830,6 +945,7 @@ async function tryLogin(){
       $("adminLogin").style.display = "none";
       $("adminWork").style.display = "block";
       renderAdminList();
+      renderOverlayAdminList();
       toast("Admin unlocked.");
     }else{
       toast("Wrong password.",true);
@@ -1038,28 +1154,38 @@ function deletePoint(id){
 }
 
 function exportData(){
-  const blob = new Blob([JSON.stringify(allPoints,null,2)], {type:"application/json"});
+  const data = {points: allPoints, overlays: allOverlays};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = "data.json";
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
-  toast("Downloaded data.json — commit it to your repo to publish.");
+  toast(`Downloaded data.json — ${allPoints.length} point(s), ${allOverlays.length} overlay(s). Commit it to publish.`);
 }
 
 function importData(file){
   const reader = new FileReader();
   reader.onload = ()=>{
     try{
-      const arr = JSON.parse(reader.result);
-      if(!Array.isArray(arr)) throw new Error("not an array");
-      if(!confirm(`Replace your current ${allPoints.length} point(s) with ${arr.length} imported point(s)?`)) return;
-      arr.forEach(p=>{ if(!p.id) p.id = uid(); });
-      allPoints = arr;
+      const json = JSON.parse(reader.result);
+      const pts = Array.isArray(json) ? json : json.points;
+      const ovs = Array.isArray(json) ? [] : (json.overlays||[]);
+      if(!Array.isArray(pts)) throw new Error("missing points array");
+      const np = pts.length, no = ovs.length;
+      if(!confirm(`Replace current data with ${np} point(s) and ${no} overlay(s)?`)) return;
+      // wipe active overlays off the map before replacing
+      Object.keys(overlayLayers).forEach(id=>removeOverlayFromMap(id));
+      georasterCache = {};
+      applyData({points: pts, overlays: ovs});
+      pts.forEach(p=>{ if(!p.id) p.id = uid(); });
       saveLocal();
       renderMarkers();
       renderAdminList();
-      toast("Imported "+arr.length+" points.");
+      renderOverlayAdminList();
+      renderOverlaySwitcher();
+      applyDefaultOverlays();
+      toast(`Imported ${np} point(s), ${no} overlay(s).`);
     }catch(e){
       toast("Could not read JSON: "+e.message,true);
     }
@@ -1067,21 +1193,328 @@ function importData(file){
   reader.readAsText(file);
 }
 
-/* ===== Historic map image overlay ===== */
-function applyOverlay(){
-  const url = $("overlayUrl").value.trim();
-  const s=parseFloat($("overlaySouth").value), n=parseFloat($("overlayNorth").value);
-  const w=parseFloat($("overlayWest").value), e=parseFloat($("overlayEast").value);
-  if(!url || ![s,n,w,e].every(isFinite)){
-    toast("Enter the image URL and all four corner coordinates.",true); return;
-  }
-  if(overlayLayer) map.removeLayer(overlayLayer);
-  overlayLayer = L.imageOverlay(url, [[s,w],[n,e]], {opacity:.75}).addTo(map);
-  map.flyTo([(s+n)/2,(w+e)/2], 13);
-  toast("Overlay applied.");
+/* ===== Historic map overlays (admin-managed, user-switchable) ===== */
+let georasterCache = {};   // overlay id -> parsed georaster (for cheap opacity changes)
+
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src=src; s.async=true;
+    s.onload=()=>res(); s.onerror=()=>rej(new Error("Failed to load "+src));
+    document.head.appendChild(s);
+  });
 }
-function clearOverlay(){
-  if(overlayLayer){ map.removeLayer(overlayLayer); overlayLayer=null; toast("Overlay cleared."); }
+/* Lazily load georaster + georaster-layer-for-leaflet from CDN (only when a
+   GeoTIFF overlay is first used). Cached so it loads once per session. */
+function loadGeotiffLibs(){
+  if(geotiffLibs) return geotiffLibs;
+  geotiffLibs = Promise.all([
+    loadScript("https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"),
+    loadScript("https://unpkg.com/georaster-layer-for-leaflet@4.1.2/dist/v3/webpack/bundle/georaster-layer-for-leaflet.min.js")
+  ]).then(()=>{
+    if(typeof window.parseGeoraster!=="function" || typeof window.GeoRasterLayer!=="function")
+      throw new Error("GeoTIFF libraries did not initialise.");
+    return true;
+  }).catch(e=>{ geotiffLibs=null; throw e; });
+  return geotiffLibs;
+}
+
+/* Build a Leaflet layer for an overlay. Tile/image are sync; geotiff is async. */
+function createOverlayLayer(ov){
+  if(ov.type==="tile"){
+    return L.tileLayer(ov.url, {opacity:ov.opacity, attribution:ov.attribution||"", maxZoom:19, maxNativeZoom:19});
+  }
+  if(ov.type==="image"){
+    if(!ov.bounds) throw new Error("Image overlay needs corner bounds.");
+    return L.imageOverlay(ov.url, ov.bounds, {opacity:ov.opacity, attribution:ov.attribution||""});
+  }
+  if(ov.type==="geotiff"){
+    return (async ()=>{
+      toast("Loading GeoTIFF…");
+      await loadGeotiffLibs();
+      let geo = georasterCache[ov.id];
+      if(!geo){
+        const res = await fetch(ov.url);
+        if(!res.ok) throw new Error("Could not fetch "+ov.url+" ("+res.status+")");
+        const buf = await res.arrayBuffer();
+        geo = await window.parseGeoraster(buf);
+        georasterCache[ov.id] = geo;
+      }
+      const layer = new window.GeoRasterLayer({
+        georaster: geo, opacity: ov.opacity,
+        attribution: ov.attribution||"GeoTIFF", resolution: 256
+      });
+      layer._isGeotiff = true;
+      return layer;
+    })();
+  }
+  throw new Error("Unknown overlay type: "+ov.type);
+}
+
+function addOverlayToMap(ov){
+  if(overlayLayers[ov.id]) return;  // already on
+  try{
+    const layerOrPromise = createOverlayLayer(ov);
+    if(layerOrPromise && typeof layerOrPromise.then==="function"){
+      layerOrPromise.then(layer=>{
+        overlayLayers[ov.id] = layer;
+        layer.addTo(map);
+        try{ layer.bringToFront(); }catch(e){}
+        if(ov.type==="geotiff") toast("GeoTIFF loaded.");
+      }).catch(err=>{
+        toast("GeoTIFF failed: "+err.message, true);
+        const cb = document.querySelector(`[data-ov-id="${ov.id}"]`);
+        if(cb && cb.type==="checkbox") cb.checked = false;
+      });
+    }else{
+      overlayLayers[ov.id] = layerOrPromise;
+      layerOrPromise.addTo(map);
+      try{ layerOrPromise.bringToFront(); }catch(e){}
+    }
+  }catch(err){
+    toast("Overlay error: "+err.message, true);
+  }
+}
+
+function removeOverlayFromMap(id){
+  const l = overlayLayers[id];
+  if(l){ map.removeLayer(l); delete overlayLayers[id]; }
+}
+
+/* User toggled a checkbox in the switcher. */
+function toggleOverlay(id, on){
+  const ov = allOverlays.find(o=>o.id===id);
+  if(!ov) return;
+  if(on) addOverlayToMap(ov);
+  else   removeOverlayFromMap(id);
+}
+
+/* User moved an opacity slider. */
+function setOverlayOpacity(id, val){
+  const ov = allOverlays.find(o=>o.id===id);
+  if(!ov) return;
+  ov.opacity = val;
+  const l = overlayLayers[id];
+  if(!l) return;
+  if(typeof l.setOpacity==="function"){
+    l.setOpacity(val);
+  }else if(l._isGeotiff && georasterCache[id]){
+    // GeoRasterLayer has no reliable setOpacity — rebuild from cached georaster.
+    const on = true; // it's currently on
+    map.removeLayer(l);
+    const nl = new window.GeoRasterLayer({ georaster:georasterCache[id], opacity:val, attribution:ov.attribution||"GeoTIFF", resolution:256 });
+    nl._isGeotiff = true;
+    overlayLayers[id] = nl; nl.addTo(map);
+    try{ nl.bringToFront(); }catch(e){}
+  }
+}
+
+/* Render the user-facing overlay switcher (checkbox + opacity per overlay). */
+function renderOverlaySwitcher(){
+  const host = $("overlayList");
+  if(!host) return;
+  if(!allOverlays.length){
+    host.innerHTML = `<p class="hint" style="margin:0">No historic map overlays yet. Add them in the <b>⚙️ Admin</b> panel.</p>`;
+    return;
+  }
+  host.innerHTML = "";
+  allOverlays.forEach(ov=>{
+    const row = document.createElement("div");
+    row.className = "ov-row";
+    row.innerHTML = `
+      <label class="ov-check"><input type="checkbox" data-ov-id="${escapeHtml(ov.id)}" ${ov.defaultOn?"checked":""}> <span>${escapeHtml(ov.name)}</span></label>
+      <input type="range" class="ov-slider" min="0" max="1" step="0.05" value="${ov.opacity}" data-ov-id="${escapeHtml(ov.id)}" aria-label="Opacity">
+      <span class="ov-pct" data-ov-pct="${escapeHtml(ov.id)}">${Math.round(ov.opacity*100)}%</span>`;
+    host.appendChild(row);
+  });
+  host.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+    cb.onchange = ()=>toggleOverlay(cb.getAttribute("data-ov-id"), cb.checked);
+  });
+  host.querySelectorAll('input[type="range"]').forEach(s=>{
+    s.oninput = ()=>{
+      const id=s.getAttribute("data-ov-id");
+      const v=parseFloat(s.value);
+      setOverlayOpacity(id, v);
+      const pct=host.querySelector(`[data-ov-pct="${id}"]`);
+      if(pct) pct.textContent = Math.round(v*100)+"%";
+    };
+  });
+}
+
+/* At boot, turn on the overlays flagged defaultOn. */
+function applyDefaultOverlays(){
+  allOverlays.forEach(ov=>{ if(ov.defaultOn) addOverlayToMap(ov); });
+}
+
+/* ===== Admin: manage overlays ===== */
+function renderOverlayAdminList(){
+  const host = $("overlayAdminList");
+  if(!host) return;
+  host.innerHTML = "";
+  if(!allOverlays.length){
+    host.innerHTML = `<p class="hint" style="margin:0">No overlays yet. Click <b>➕ Add overlay</b> to add a historic map (tile URL, scanned image, or GeoTIFF).</p>`;
+    return;
+  }
+  allOverlays.forEach(ov=>{
+    const el = document.createElement("div");
+    el.className = "pt-item";
+    const typeLabel = {tile:"Tile layer", image:"Image + bounds", geotiff:"GeoTIFF"}[ov.type]||ov.type;
+    el.innerHTML = `
+      <div class="emoji">🗺️</div>
+      <div class="meta">
+        <div class="name">${escapeHtml(ov.name)}${ov.defaultOn?' <span class="badge">on</span>':""}</div>
+        <div class="sub">${typeLabel} · opacity ${Math.round(ov.opacity*100)}%</div>
+      </div>
+      <button class="btn sm ghost" data-edit>Edit</button>
+      <button class="btn sm danger" data-del>Del</button>`;
+    el.querySelector("[data-edit]").onclick = ()=>startEditOverlay(ov.id);
+    el.querySelector("[data-del]").onclick = ()=>deleteOverlay(ov.id);
+    host.appendChild(el);
+  });
+}
+
+function showOverlayForm(){
+  $("adminWork").style.display = "none";
+  $("overlayForm").style.display = "block";
+}
+function hideOverlayForm(){
+  $("overlayForm").style.display = "none";
+  $("adminWork").style.display = "block";
+  if(previewLayer){ map.removeLayer(previewLayer); previewLayer=null; }
+  editingOverlayId = null;
+}
+
+function clearOverlayForm(){
+  $("ovName").value = "";
+  $("ovType").value = "tile";
+  $("ovUrl").value = "";
+  ["ovSouth","ovNorth","ovWest","ovEast"].forEach(id=>$(id).value="");
+  $("ovOpacity").value = 0.7;
+  $("ovOpacityPct").textContent = "70%";
+  $("ovDefault").checked = false;
+  $("ovAttribution").value = "";
+  onOverlayTypeChange();
+}
+
+function onOverlayTypeChange(){
+  const t = $("ovType").value;
+  const urlLabel = $("ovUrlLabel");
+  const bounds = $("ovBoundsRow");
+  const hint = $("ovUrlHint");
+  if(t==="tile"){
+    urlLabel.textContent = "Tile URL (XYZ — contains {z}/{x}/{y})";
+    bounds.style.display = "none";
+    hint.innerHTML = `From Georeferencer's map page: <code>Export → Tiles</code>. Looks like <code>https://tiles.georeferencer.com/abc/{z}/{x}/{y}.png</code>.`;
+  }else if(t==="image"){
+    urlLabel.textContent = "Image URL";
+    bounds.style.display = "block";
+    hint.innerHTML = `A plain scanned image. Enter its URL and the lat/lng of its four corners so it lines up.`;
+  }else{ // geotiff
+    urlLabel.textContent = "GeoTIFF path / URL";
+    bounds.style.display = "none";
+    hint.innerHTML = `Upload the <code>.tif</code> into your repo (e.g. <code>maps/tehran-1968.tif</code>) and enter that path, or any <code>https://</code> URL. Bounds are read automatically from the file.`;
+  }
+}
+
+function enterAddOverlay(){
+  if(!adminUnlocked) return;
+  editingOverlayId = null;
+  clearOverlayForm();
+  $("overlayFormTitle").textContent = "Add overlay";
+  showOverlayForm();
+}
+
+function startEditOverlay(id){
+  const ov = allOverlays.find(o=>o.id===id);
+  if(!ov) return;
+  editingOverlayId = id;
+  clearOverlayForm();
+  $("overlayFormTitle").textContent = "Edit overlay";
+  $("ovName").value = ov.name;
+  $("ovType").value = ov.type;
+  $("ovUrl").value = ov.url;
+  if(ov.type==="image" && ov.bounds){
+    $("ovSouth").value = ov.bounds[0][0];
+    $("ovWest").value  = ov.bounds[0][1];
+    $("ovNorth").value = ov.bounds[1][0];
+    $("ovEast").value  = ov.bounds[1][1];
+  }
+  $("ovOpacity").value = ov.opacity;
+  $("ovOpacityPct").textContent = Math.round(ov.opacity*100)+"%";
+  $("ovDefault").checked = ov.defaultOn;
+  $("ovAttribution").value = ov.attribution;
+  onOverlayTypeChange();
+  showOverlayForm();
+}
+
+function collectOverlay(){
+  const name = $("ovName").value.trim();
+  const type = $("ovType").value;
+  const url = $("ovUrl").value.trim();
+  if(!name){ toast("Overlay name is required.",true); return null; }
+  if(!url){ toast("Overlay URL / path is required.",true); return null; }
+  const ov = { id: editingOverlayId || ("ov_"+Math.random().toString(36).slice(2,9)), name, type, url,
+    opacity: parseFloat($("ovOpacity").value), defaultOn: $("ovDefault").checked,
+    attribution: $("ovAttribution").value.trim() };
+  if(type==="image"){
+    const s=parseFloat($("ovSouth").value), n=parseFloat($("ovNorth").value);
+    const w=parseFloat($("ovWest").value), e=parseFloat($("ovEast").value);
+    if(![s,n,w,e].every(isFinite)){ toast("Enter all four corner coordinates for the image.",true); return null; }
+    ov.bounds = [[s,w],[n,e]];
+  }
+  return ov;
+}
+
+function saveOverlay(){
+  const ov = collectOverlay();
+  if(!ov) return;
+  normalizeOverlay(ov);
+  // remove old layer if it was on the map
+  if(overlayLayers[ov.id]) removeOverlayFromMap(ov.id);
+  if(editingOverlayId){
+    const i = allOverlays.findIndex(o=>o.id===editingOverlayId);
+    if(i>=0) allOverlays[i]=ov; else allOverlays.push(ov);
+  }else{
+    allOverlays.push(ov);
+  }
+  saveLocal();
+  renderOverlayAdminList();
+  renderOverlaySwitcher();
+  if(ov.defaultOn) addOverlayToMap(ov);          // show it immediately if default-on
+  // keep its switcher checkbox in sync
+  const cb = document.querySelector(`.ov-row [data-ov-id="${ov.id}"]`);
+  if(cb && cb.type==="checkbox") cb.checked = !!overlayLayers[ov.id];
+  hideOverlayForm();
+  toast("Overlay saved (to this browser). Export JSON to publish.");
+}
+
+function deleteOverlay(id){
+  if(!confirm("Delete this overlay?")) return;
+  removeOverlayFromMap(id);
+  delete georasterCache[id];
+  allOverlays = allOverlays.filter(o=>o.id!==id);
+  saveLocal();
+  renderOverlayAdminList();
+  renderOverlaySwitcher();
+  toast("Overlay deleted.");
+}
+
+/* Preview the form's current overlay on the map without saving it. */
+function previewOverlay(){
+  const ov = collectOverlay();
+  if(!ov) return;
+  normalizeOverlay(ov);
+  if(previewLayer){ map.removeLayer(previewLayer); previewLayer=null; }
+  toast("Loading preview…");
+  try{
+    const lo = createOverlayLayer(ov);
+    if(lo && typeof lo.then==="function"){
+      lo.then(layer=>{ previewLayer=layer; layer.addTo(map); try{layer.bringToFront();}catch(e){} toast("Preview shown."); })
+        .catch(err=>toast("Preview failed: "+err.message,true));
+    }else{
+      previewLayer=lo; lo.addTo(map); try{lo.bringToFront();}catch(e){} toast("Preview shown.");
+    }
+  }catch(err){ toast("Preview failed: "+err.message,true); }
 }
 
 /* ===== Wire up events ===== */
@@ -1103,10 +1536,16 @@ function wireEvents(){
   // Layers
   $("baseLayer").onchange = (e)=>setBaseLayer(e.target.value);
   $("vintageToggle").onchange = (e)=>applyVintage(e.target.value==="on");
-  $("btnApplyOverlay").onclick = applyOverlay;
-  $("btnClearOverlay").onclick = clearOverlay;
   // vintage default on
   applyVintage(true);
+
+  // Overlay editor (admin)
+  $("btnAddOverlay").onclick = enterAddOverlay;
+  $("btnSaveOverlay").onclick = saveOverlay;
+  $("btnCancelOverlay").onclick = hideOverlayForm;
+  $("btnPreviewOverlay").onclick = previewOverlay;
+  $("ovType").onchange = onOverlayTypeChange;
+  $("ovOpacity").oninput = (e)=>{ $("ovOpacityPct").textContent = Math.round(parseFloat(e.target.value)*100)+"%"; };
 
   // Admin
   $("btnLogin").onclick = tryLogin;
@@ -1136,6 +1575,8 @@ function wireEvents(){
   initMap();
   await loadData();
   renderMarkers();
+  renderOverlaySwitcher();
+  applyDefaultOverlays();
   wireEvents();
 })();
 </script>
