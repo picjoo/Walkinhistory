@@ -185,6 +185,15 @@
   }
   .pin .selected .body{outline:3px solid var(--accent-2)}
 
+  /* Admin mode: pins are draggable — show a grab cursor + a faint ring so the
+     admin can tell pins are movable. Leaflet adds .leaflet-marker-draggable
+     to the icon of any marker created with draggable:true. */
+  .leaflet-marker-draggable{ cursor: grab; }
+  .leaflet-marker-draggable:active{ cursor: grabbing; }
+  #map.admin-mode .leaflet-marker-draggable .pin .body{
+    box-shadow: 0 0 0 3px rgba(28,93,141,.35);
+  }
+
   /* Leaflet popup tweaks */
   .leaflet-popup-content{margin:10px 12px;font-size:13px;line-height:1.45}
   .leaflet-popup-content h3{margin:0 0 4px;font-size:15px}
@@ -732,13 +741,47 @@ function saveLocal(){
 function renderMarkers(){
   markersLayer.clearLayers();
   allPoints.forEach(p=>{
-    const m = L.marker([p.lat,p.lng],{icon:pinIcon(p.category)});
+    const m = L.marker([p.lat,p.lng],{
+      icon: pinIcon(p.category),
+      draggable: adminUnlocked,   // pins are movable only when the admin panel is unlocked
+      keyboard: false
+    });
     m.bindPopup(popupHtml(p), {maxWidth:280});
     // NOTE: do NOT re-render markers on popupopen — clearLayers() here would
     // destroy the marker and its popup the instant it opens, making popups
     // appear to do nothing when a pin is clicked.
+    if(adminUnlocked){
+      m.on("dragend", ()=>{
+        const ll = m.getLatLng();
+        onMarkerMoved(p.id, ll.lat, ll.lng);
+      });
+    }
     m.addTo(markersLayer);
   });
+}
+
+/* A pin was dragged in admin mode — persist the new position and autofill the
+   lat/lng into the point form. */
+function onMarkerMoved(id, lat, lng){
+  const p = allPoints.find(x=>x.id===id);
+  if(!p) return;
+  p.lat = lat; p.lng = lng;
+  saveLocal();
+  const formOpen = $("pointForm").style.display === "block";
+  if(formOpen && editingId === id){
+    // already editing this point — just refresh the coordinate fields
+    $("fLat").value = lat.toFixed(6);
+    $("fLng").value = lng.toFixed(6);
+    pendingLatLng = {lat, lng};
+    toast("Coordinates updated — save to confirm.");
+  }else if(!formOpen){
+    // open the edit form for this point; coords are autofilled from p.lat/lng
+    startEdit(id);
+    toast("Moved “"+p.name+"”. Coordinates autofilled — save to confirm.");
+  }else{
+    // a different point's form is open — don't disrupt it, just persist the move
+    toast("Moved “"+p.name+"” to "+lat.toFixed(5)+", "+lng.toFixed(5)+".");
+  }
 }
 
 function popupHtml(p){
@@ -946,7 +989,9 @@ async function tryLogin(){
       $("adminWork").style.display = "block";
       renderAdminList();
       renderOverlayAdminList();
-      toast("Admin unlocked.");
+      renderMarkers();                 // re-create pins as draggable now that admin is unlocked
+      $("map").classList.add("admin-mode");
+      toast("Admin unlocked — click the map to add a point, or drag any pin to move it.");
     }else{
       toast("Wrong password.",true);
     }
@@ -1010,7 +1055,7 @@ function downloadHash(){
 function renderAdminList(){
   const body = $("adminList");
   body.innerHTML = "";
-  $("adminStats").textContent = `${allPoints.length} point(s). Edits are saved to this browser; use Export JSON to publish them.`;
+  $("adminStats").textContent = `${allPoints.length} point(s) · ${allOverlays.length} overlay(s). Click the map to add a point, or drag any pin to move it. Edits are saved to this browser; use Export JSON to publish.`;
   allPoints.forEach(p=>{
     const cat = CATEGORIES[p.category]||CATEGORIES.other;
     const el = document.createElement("div");
@@ -1097,7 +1142,7 @@ function startEdit(id){
   if(!p) return;
   editingId = id; addMode = false;
   $("map").classList.remove("adding");
-  showForm("Edit point", "Update the details below. To move the point, change the coordinates.");
+  showForm("Edit point", "Update the details below. To move the point, drag its pin on the map, or edit the coordinates directly.");
   $("fLat").value = p.lat; $("fLng").value = p.lng;
   $("fName").value = p.name || "";
   $("fYear").value = p.year || "";
