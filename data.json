@@ -1,86 +1,108 @@
-[
-  {
-    "id": "sample-golestan",
-    "name": "Golestan Palace",
-    "lat": 35.6794,
-    "lng": 51.4229,
-    "year": 1789,
-    "category": "palace",
-    "description": "The royal Qajar palace complex in central Tehran. By 1968 it served as a ceremonial seat and museum of the Pahlavi court, surrounding the famous Marble Throne (Takht-e Marmar) and audience halls.",
-    "photos": [
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Palais_du_Golestan,%20T%C3%A9h%C3%A9ran%20(5).jpg?width=480",
-      "https://commons.wikimedia.org/wiki/Special:FilePath/-Golestan,%20The%20Peacock%20Throne,%20Teheran,%20Iran-%20(Takht-I%20Taous)%20MET%20DP202914.jpg?width=480",
-      "https://commons.wikimedia.org/wiki/Special:FilePath/1047.GolestanMuseum%20(1405206037).jpg?width=480"
-    ],
-    "wikipedia": "https://en.wikipedia.org/wiki/Golestan_Palace",
-    "source": "Sample entry — replace with verified data",
-    "sample": true
-  },
-  {
-    "id": "sample-bazaar",
-    "name": "Tehran Grand Bazaar",
-    "lat": 35.6753,
-    "lng": 51.4225,
-    "year": 1600,
-    "category": "bazaar",
-    "description": "A vast network of covered lanes, caravanserais and guild quarters stretching south of the Arg citadel. In 1968 it remained the commercial heart of the city, with merchants trading textiles, tea, spices, carpets and metalwork.",
-    "photos": [],
-    "wikipedia": "https://en.wikipedia.org/wiki/Grand_Bazaar_of_Tehran",
-    "source": "Sample entry — replace with verified data",
-    "sample": true
-  },
-  {
-    "id": "sample-museum",
-    "name": "Iran-e Bastan Museum (National Museum)",
-    "lat": 35.6886,
-    "lng": 51.4319,
-    "year": 1937,
-    "category": "museum",
-    "description": "Designed by André Godard and opened in 1937, this brick Sassanid-style building on Si-e Tir Street housed Iran's principal archaeological collection. In 1968 it displayed finds from Persepolis, Susa and other sites.",
-    "photos": [
-      "https://commons.wikimedia.org/wiki/Special:FilePath/N%C3%A1rodn%C3%AD%20muzeum%20%C3%8Dr%C3%A1nu.jpg?width=480"
-    ],
-    "wikipedia": "https://en.wikipedia.org/wiki/National_Museum_of_Iran",
-    "source": "Sample entry — replace with verified data",
-    "sample": true
-  },
-  {
-    "id": "sample-sadabad",
-    "name": "Sa'dabad Complex",
-    "lat": 35.8103,
-    "lng": 51.4253,
-    "year": 1920,
-    "category": "palace",
-    "description": "Royal compound at the foot of the Alborz, developed by the Qajars and greatly expanded under Reza Shah and Mohammad Reza Pahlavi. By 1968 several palaces stood within its gardens; the Green Palace (Kakh-e Sabz) and White House were in use.",
-    "photos": [],
-    "wikipedia": "https://en.wikipedia.org/wiki/Saadabad_Complex",
-    "source": "Sample entry — replace with verified data",
-    "sample": true
-  },
-  {
-    "id": "sample-darband",
-    "name": "Darband",
-    "lat": 35.8336,
-    "lng": 51.4244,
-    "year": 1800,
-    "category": "other",
-    "description": "The mountain gateway at the top of Tajrish, long the start of the trail into the Alborz. In 1968 it was already a popular summer escape with tea houses, fruit gardens and steep stone paths climbing toward Tochal.",
-    "photos": [],
-    "wikipedia": "https://en.wikipedia.org/wiki/Darband,_Tehran",
-    "source": "Sample entry — replace with verified data",
-    "sample": true
-  },
-  {
-    "id": "sample-shahabdolazim",
-    "name": "Shah-Abdol-Azim Shrine",
-    "lat": 35.5917,
-    "lng": 51.4394,
-    "year": 900,
-    "category": "other",
-    "description": "The shrine of Abdol-Azim Hassani in the historic town of Rey, south of Tehran. A major pilgrimage site with a golden dome, courtyard and adjoining shrines of Imamzadeh Hamzeh and Naser al-Din Shah.",
-    "photos": [],
-    "wikipedia": "https://en.wikipedia.org/wiki/Shah-Abdol-Azim_Shrine",
-    "source": "Sample entry — replace with verified data",
-    "sample": true
-  }
-]
+{
+  "points": [
+    {
+      "id": "sample-golestan",
+      "name": "Golestan Palace",
+      "lat": 35.6794,
+      "lng": 51.4229,
+      "year": 1789,
+      "category": "palace",
+      "description": "The royal Qajar palace complex in central Tehran. By 1968 it served as a ceremonial seat and museum of the Pahlavi court, surrounding the famous Marble Throne (Takht-e Marmar) and audience halls.",
+      "photos": [
+        "https://commons.wikimedia.org/wiki/Special:FilePath/Palais_du_Golestan,%20T%C3%A9h%C3%A9ran%20(5).jpg?width=480",
+        "https://commons.wikimedia.org/wiki/Special:FilePath/-Golestan,%20The%20Peacock%20Throne,%20Teheran,%20Iran-%20(Takht-I%20Taous)%20MET%20DP202914.jpg?width=480",
+        "https://commons.wikimedia.org/wiki/Special:FilePath/1047.GolestanMuseum%20(1405206037).jpg?width=480"
+      ],
+      "wikipedia": "https://en.wikipedia.org/wiki/Golestan_Palace",
+      "source": "Sample entry — replace with verified data",
+      "sample": true
+    },
+    {
+      "id": "sample-bazaar",
+      "name": "Tehran Grand Bazaar",
+      "lat": 35.6753,
+      "lng": 51.4225,
+      "year": 1600,
+      "category": "bazaar",
+      "description": "A vast network of covered lanes, caravanserais and guild quarters stretching south of the Arg citadel. In 1968 it remained the commercial heart of the city, with merchants trading textiles, tea, spices, carpets and metalwork.",
+      "photos": [],
+      "wikipedia": "https://en.wikipedia.org/wiki/Grand_Bazaar_of_Tehran",
+      "source": "Sample entry — replace with verified data",
+      "sample": true
+    },
+    {
+      "id": "sample-museum",
+      "name": "Iran-e Bastan Museum (National Museum)",
+      "lat": 35.6886,
+      "lng": 51.4319,
+      "year": 1937,
+      "category": "museum",
+      "description": "Designed by André Godard and opened in 1937, this brick Sassanid-style building on Si-e Tir Street housed Iran's principal archaeological collection. In 1968 it displayed finds from Persepolis, Susa and other sites.",
+      "photos": [
+        "https://commons.wikimedia.org/wiki/Special:FilePath/N%C3%A1rodn%C3%AD%20muzeum%20%C3%8Dr%C3%A1nu.jpg?width=480"
+      ],
+      "wikipedia": "https://en.wikipedia.org/wiki/National_Museum_of_Iran",
+      "source": "Sample entry — replace with verified data",
+      "sample": true
+    },
+    {
+      "id": "sample-sadabad",
+      "name": "Sa'dabad Complex",
+      "lat": 35.8103,
+      "lng": 51.4253,
+      "year": 1920,
+      "category": "palace",
+      "description": "Royal compound at the foot of the Alborz, developed by the Qajars and greatly expanded under Reza Shah and Mohammad Reza Pahlavi. By 1968 several palaces stood within its gardens; the Green Palace (Kakh-e Sabz) and White House were in use.",
+      "photos": [],
+      "wikipedia": "https://en.wikipedia.org/wiki/Saadabad_Complex",
+      "source": "Sample entry — replace with verified data",
+      "sample": true
+    },
+    {
+      "id": "sample-darband",
+      "name": "Darband",
+      "lat": 35.8336,
+      "lng": 51.4244,
+      "year": 1800,
+      "category": "other",
+      "description": "The mountain gateway at the top of Tajrish, long the start of the trail into the Alborz. In 1968 it was already a popular summer escape with tea houses, fruit gardens and steep stone paths climbing toward Tochal.",
+      "photos": [],
+      "wikipedia": "https://en.wikipedia.org/wiki/Darband,_Tehran",
+      "source": "Sample entry — replace with verified data",
+      "sample": true
+    },
+    {
+      "id": "sample-shahabdolazim",
+      "name": "Shah-Abdol-Azim Shrine",
+      "lat": 35.5917,
+      "lng": 51.4394,
+      "year": 900,
+      "category": "other",
+      "description": "The shrine of Abdol-Azim Hassani in the historic town of Rey, south of Tehran. A major pilgrimage site with a golden dome, courtyard and adjoining shrines of Imamzadeh Hamzeh and Naser al-Din Shah.",
+      "photos": [],
+      "wikipedia": "https://en.wikipedia.org/wiki/Shah-Abdol-Azim_Shrine",
+      "source": "Sample entry — replace with verified data",
+      "sample": true
+    }
+  ],
+  "overlays": [
+    {
+      "id": "ov_example_railway",
+      "name": "Example overlay — replace with your historic map",
+      "type": "tile",
+      "url": "https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
+      "opacity": 0.7,
+      "defaultOn": false,
+      "attribution": "© OpenRailwayMap contributors"
+    },
+    {
+      "id": "ov_sample_geotiff",
+      "name": "Sample GeoTIFF (demo — georeferenced over Tehran)",
+      "type": "geotiff",
+      "url": "maps/sample.tif",
+      "opacity": 0.8,
+      "defaultOn": false,
+      "attribution": "Generated sample for testing"
+    }
+  ]
+}
