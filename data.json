@@ -7,7 +7,12 @@
     "year": 1789,
     "category": "palace",
     "description": "The royal Qajar palace complex in central Tehran. By 1968 it served as a ceremonial seat and museum of the Pahlavi court, surrounding the famous Marble Throne (Takht-e Marmar) and audience halls.",
-    "photo": "",
+    "photos": [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Palais_du_Golestan,%20T%C3%A9h%C3%A9ran%20(5).jpg?width=480",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/-Golestan,%20The%20Peacock%20Throne,%20Teheran,%20Iran-%20(Takht-I%20Taous)%20MET%20DP202914.jpg?width=480",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/1047.GolestanMuseum%20(1405206037).jpg?width=480"
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/Golestan_Palace",
     "source": "Sample entry — replace with verified data",
     "sample": true
   },
@@ -19,7 +24,8 @@
     "year": 1600,
     "category": "bazaar",
     "description": "A vast network of covered lanes, caravanserais and guild quarters stretching south of the Arg citadel. In 1968 it remained the commercial heart of the city, with merchants trading textiles, tea, spices, carpets and metalwork.",
-    "photo": "",
+    "photos": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Grand_Bazaar_of_Tehran",
     "source": "Sample entry — replace with verified data",
     "sample": true
   },
@@ -31,7 +37,10 @@
     "year": 1937,
     "category": "museum",
     "description": "Designed by André Godard and opened in 1937, this brick Sassanid-style building on Si-e Tir Street housed Iran's principal archaeological collection. In 1968 it displayed finds from Persepolis, Susa and other sites.",
-    "photo": "",
+    "photos": [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/N%C3%A1rodn%C3%AD%20muzeum%20%C3%8Dr%C3%A1nu.jpg?width=480"
+    ],
+    "wikipedia": "https://en.wikipedia.org/wiki/National_Museum_of_Iran",
     "source": "Sample entry — replace with verified data",
     "sample": true
   },
@@ -43,7 +52,8 @@
     "year": 1920,
     "category": "palace",
     "description": "Royal compound at the foot of the Alborz, developed by the Qajars and greatly expanded under Reza Shah and Mohammad Reza Pahlavi. By 1968 several palaces stood within its gardens; the Green Palace (Kakh-e Sabz) and White House were in use.",
-    "photo": "",
+    "photos": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Saadabad_Complex",
     "source": "Sample entry — replace with verified data",
     "sample": true
   },
@@ -55,7 +65,8 @@
     "year": 1800,
     "category": "other",
     "description": "The mountain gateway at the top of Tajrish, long the start of the trail into the Alborz. In 1968 it was already a popular summer escape with tea houses, fruit gardens and steep stone paths climbing toward Tochal.",
-    "photo": "",
+    "photos": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Darband,_Tehran",
     "source": "Sample entry — replace with verified data",
     "sample": true
   },
@@ -67,7 +78,8 @@
     "year": 900,
     "category": "other",
     "description": "The shrine of Abdol-Azim Hassani in the historic town of Rey, south of Tehran. A major pilgrimage site with a golden dome, courtyard and adjoining shrines of Imamzadeh Hamzeh and Naser al-Din Shah.",
-    "photo": "",
+    "photos": [],
+    "wikipedia": "https://en.wikipedia.org/wiki/Shah-Abdol-Azim_Shrine",
     "source": "Sample entry — replace with verified data",
     "sample": true
   }
