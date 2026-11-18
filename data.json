@@ -1,0 +1,74 @@
+[
+  {
+    "id": "sample-golestan",
+    "name": "Golestan Palace",
+    "lat": 35.6794,
+    "lng": 51.4229,
+    "year": 1789,
+    "category": "palace",
+    "description": "The royal Qajar palace complex in central Tehran. By 1968 it served as a ceremonial seat and museum of the Pahlavi court, surrounding the famous Marble Throne (Takht-e Marmar) and audience halls.",
+    "photo": "",
+    "source": "Sample entry — replace with verified data",
+    "sample": true
+  },
+  {
+    "id": "sample-bazaar",
+    "name": "Tehran Grand Bazaar",
+    "lat": 35.6753,
+    "lng": 51.4225,
+    "year": 1600,
+    "category": "bazaar",
+    "description": "A vast network of covered lanes, caravanserais and guild quarters stretching south of the Arg citadel. In 1968 it remained the commercial heart of the city, with merchants trading textiles, tea, spices, carpets and metalwork.",
+    "photo": "",
+    "source": "Sample entry — replace with verified data",
+    "sample": true
+  },
+  {
+    "id": "sample-museum",
+    "name": "Iran-e Bastan Museum (National Museum)",
+    "lat": 35.6886,
+    "lng": 51.4319,
+    "year": 1937,
+    "category": "museum",
+    "description": "Designed by André Godard and opened in 1937, this brick Sassanid-style building on Si-e Tir Street housed Iran's principal archaeological collection. In 1968 it displayed finds from Persepolis, Susa and other sites.",
+    "photo": "",
+    "source": "Sample entry — replace with verified data",
+    "sample": true
+  },
+  {
+    "id": "sample-sadabad",
+    "name": "Sa'dabad Complex",
+    "lat": 35.8103,
+    "lng": 51.4253,
+    "year": 1920,
+    "category": "palace",
+    "description": "Royal compound at the foot of the Alborz, developed by the Qajars and greatly expanded under Reza Shah and Mohammad Reza Pahlavi. By 1968 several palaces stood within its gardens; the Green Palace (Kakh-e Sabz) and White House were in use.",
+    "photo": "",
+    "source": "Sample entry — replace with verified data",
+    "sample": true
+  },
+  {
+    "id": "sample-darband",
+    "name": "Darband",
+    "lat": 35.8336,
+    "lng": 51.4244,
+    "year": 1800,
+    "category": "other",
+    "description": "The mountain gateway at the top of Tajrish, long the start of the trail into the Alborz. In 1968 it was already a popular summer escape with tea houses, fruit gardens and steep stone paths climbing toward Tochal.",
+    "photo": "",
+    "source": "Sample entry — replace with verified data",
+    "sample": true
+  },
+  {
+    "id": "sample-shahabdolazim",
+    "name": "Shah-Abdol-Azim Shrine",
+    "lat": 35.5917,
+    "lng": 51.4394,
+    "year": 900,
+    "category": "other",
+    "description": "The shrine of Abdol-Azim Hassani in the historic town of Rey, south of Tehran. A major pilgrimage site with a golden dome, courtyard and adjoining shrines of Imamzadeh Hamzeh and Naser al-Din Shah.",
+    "photo": "",
+    "source": "Sample entry — replace with verified data",
+    "sample": true
+  }
+]

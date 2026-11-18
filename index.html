@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Tehran 1968 — Historic Map</title>
+
+<!-- Leaflet (free, open-source map library) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<style>
+  :root{
+    --bg:#1c1917;
+    --panel:#faf7f2;
+    --ink:#2b2117;
+    --muted:#6b5d4f;
+    --accent:#9a3412;      /* burnt sienna */
+    --accent-2:#b45309;    /* amber */
+    --line:#e7dccb;
+    --ok:#15803d;
+    --danger:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    overflow:hidden;
+  }
+  /* Map fills the viewport */
+  #map{position:absolute;inset:0;height:100%;width:100%;background:#eef1f3;z-index:0}
+  /* Vintage filter applied to tile pane when toggled */
+  #map.vintage .leaflet-tile-pane{filter:sepia(.55) saturate(1.1) contrast(1.05) brightness(.97)}
+
+  /* Top bar */
+  .topbar{
+    position:absolute;top:10px;left:10px;right:10px;z-index:1000;
+    display:flex;align-items:center;gap:8px;pointer-events:none;
+  }
+  .brand{
+    pointer-events:auto;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:4px solid var(--accent);
+    border-radius:10px;
+    padding:8px 14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);
+    display:flex;flex-direction:column;line-height:1.15;
+  }
+  .brand b{font-size:15px;letter-spacing:.3px}
+  .brand small{color:var(--muted);font-size:11px}
+
+  .spacer{flex:1}
+
+  .btn{
+    pointer-events:auto;
+    appearance:none;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink);
+    font-size:13px;font-weight:600;
+    padding:9px 12px;border-radius:9px;cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+    display:inline-flex;align-items:center;gap:6px;
+    transition:transform .06s ease, background .15s ease;
+  }
+  .btn:hover{background:#fff}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#7c2d12}
+  .btn.ghost{background:rgba(255,255,255,.85)}
+  .btn.danger{background:#fff;color:var(--danger);border-color:#f0c9c9}
+  .btn.danger:hover{background:#fef2f2}
+  .btn.sm{padding:6px 9px;font-size:12px}
+  .btn.icon{padding:9px 10px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* Floating vertical toolbar (left) */
+  .toolbar{
+    position:absolute;left:10px;top:64px;z-index:1000;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .toolbar .btn{justify-content:center;width:44px;height:44px;padding:0;font-size:18px}
+
+  /* Panel host: fixed viewport-sized box that clips off-screen panels
+     so the translateX(105%) closed state never expands the document width. */
+  #panelHost{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:1100}
+  #panelHost .panel{pointer-events:auto}
+
+  /* Slide-in panels */
+  .panel{
+    position:absolute;top:0;right:0;bottom:0;z-index:1100;
+    width:min(420px,92vw);background:var(--panel);
+    border-left:1px solid var(--line);
+    box-shadow:-10px 0 40px rgba(0,0,0,.25);
+    transform:translateX(105%);transition:transform .22s ease;
+    display:flex;flex-direction:column;
+  }
+  .panel.open{transform:translateX(0)}
+  .panel-head{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+    background:linear-gradient(180deg,#fff,#faf3ea);
+  }
+  .panel-head h2{font-size:16px;margin:0;flex:1}
+  .panel-body{padding:16px;overflow-y:auto;flex:1}
+  .panel-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px}
+
+  /* Forms */
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;font-weight:600}
+  input,select,textarea{
+    width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);
+    border-radius:7px;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-2);border-color:var(--accent-2)}
+  textarea{resize:vertical;min-height:70px}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .badge{
+    display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;
+    padding:2px 7px;border-radius:999px;text-transform:uppercase;
+    background:#f3e8d8;color:#7c5a2e;
+  }
+
+  /* Nearby list */
+  .near-item{
+    display:flex;gap:10px;padding:11px;border:1px solid var(--line);
+    border-radius:9px;margin-bottom:9px;cursor:pointer;background:#fff;
+  }
+  .near-item:hover{border-color:var(--accent-2);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .near-item .emoji{font-size:22px;line-height:1}
+  .near-item .meta{flex:1;min-width:0}
+  .near-item .name{font-weight:700;font-size:14px;display:flex;gap:6px;align-items:center}
+  .near-item .desc{color:var(--muted);font-size:12px;margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .near-item .dist{font-size:11px;color:var(--accent);font-weight:700;margin-top:4px}
+
+  /* Admin point list */
+  .pt-item{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;
+    border:1px solid var(--line);border-radius:8px;margin-bottom:7px;background:#fff;
+  }
+  .pt-item .emoji{font-size:18px}
+  .pt-item .meta{flex:1;min-width:0;overflow:hidden}
+  .pt-item .name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pt-item .sub{font-size:11px;color:var(--muted)}
+
+  /* Toast */
+  .toast{
+    position:absolute;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:#1c1917;color:#fff;padding:10px 16px;border-radius:8px;
+    font-size:13px;z-index:2000;opacity:0;pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--danger)}
+
+  /* Marker pin (divIcon) */
+  .pin{
+    width:32px;height:42px;position:relative;transform:translate(-50%,-100%);
+    filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
+  }
+  .pin .emo{
+    position:absolute;top:4px;left:50%;transform:translateX(-50%);
+    font-size:15px;line-height:1;
+  }
+  .pin .body{
+    width:32px;height:32px;border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);
+    border:2px solid #fff;
+  }
+  .pin .selected .body{outline:3px solid var(--accent-2)}
+
+  /* Leaflet popup tweaks */
+  .leaflet-popup-content{margin:10px 12px;font-size:13px;line-height:1.45}
+  .leaflet-popup-content h3{margin:0 0 4px;font-size:15px}
+  .leaflet-popup-content .photo{width:220px;max-width:100%;border-radius:6px;margin:6px 0;display:block}
+  .leaflet-popup-content .year{color:var(--accent);font-weight:700;font-size:12px}
+  .leaflet-popup-content .desc{color:#444;margin-top:6px}
+
+  /* Cursor in add-point mode */
+  #map.adding{cursor:crosshair}
+  #map.adding::after{
+    content:"Click the map to place a point  •  ESC to cancel";
+    position:absolute;left:50%;top:70px;transform:translateX(-50%);
+    background:#1c1917;color:#fff;padding:8px 14px;border-radius:7px;
+    font-size:12px;z-index:1500;pointer-events:none;
+  }
+
+  /* Mobile tweaks */
+  @media (max-width:640px){
+    .brand small{display:none}
+    .brand b{font-size:13px}
+    .btn span.lbl{display:none}      /* icon-only buttons on phone */
+    .toolbar{top:58px}
+    .panel{width:100vw}
+  }
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+  /* Accuracy circle for GPS */
+  .leaflet-control-attribution{font-size:10px !important;background:rgba(255,255,255,.7) !important}
+</style>
+</head>
+<body>
+
+<main>
+  <div id="map" role="application" aria-label="Historic map of Tehran, 1968"></div>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="brand">
+      <b>Tehran 1968 — Historic Map</b>
+      <small>Find historic places around you</small>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost icon" id="btnNearby" title="Nearby places" aria-label="Nearby places">📍<span class="lbl">Nearby</span></button>
+    <button class="btn ghost icon" id="btnLayers" title="Map layers" aria-label="Map layers">🗺️<span class="lbl">Layers</span></button>
+    <button class="btn ghost icon" id="btnAdmin" title="Admin panel" aria-label="Admin panel">⚙️<span class="lbl">Admin</span></button>
+  </div>
+
+  <!-- Left toolbar -->
+  <div class="toolbar">
+    <button class="btn ghost icon" id="btnLocate" title="Find my location (GPS)" aria-label="Find my location">🎯</button>
+    <button class="btn ghost icon" id="btnHome" title="Reset to Tehran center" aria-label="Reset view">🏠</button>
+  </div>
+</main>
+
+<div id="panelHost">
+<!-- ============ NEARBY PANEL ============ -->
+<aside class="panel" id="panelNearby" aria-label="Nearby historic places">
+  <div class="panel-head">
+    <h2>Nearby Historic Places</h2>
+    <button class="btn sm ghost" data-close>✕</button>
+  </div>
+  <div class="panel-body" id="nearbyBody">
+    <p class="hint" id="nearbyHint">Tap <b>Find my location</b> (🎯) first, then open this panel to see historic places around you, sorted by distance.</p>
+    <div id="nearbyList"></div>
+  </div>
+  <div class="panel-foot">
+    <label style="margin:0;flex:1">Radius
+      <select id="nearbyRadius">
+        <option value="1">1 km</option>
+        <option value="3">3 km</option>
+        <option value="5" selected>5 km</option>
+        <option value="10">10 km</option>
+        <option value="25">25 km</option>
+        <option value="9999">Any</option>
+      </select>
+    </label>
+    <button class="btn sm primary" id="btnLocate2">Find me</button>
+  </div>
+</aside>
+
+<!-- ============ LAYERS PANEL ============ -->
+<aside class="panel" id="panelLayers" aria-label="Map layers">
+  <div class="panel-head">
+    <h2>Map Layers</h2>
+    <button class="btn sm ghost" data-close>✕</button>
+  </div>
+  <div class="panel-body">
+    <label>Base map</label>
+    <select id="baseLayer">
+      <option value="osm">OpenStreetMap (modern streets)</option>
+      <option value="satellite">Satellite imagery (Esri)</option>
+      <option value="topo">OpenTopoMap (terrain)</option>
+    </select>
+    <p class="hint">Modern base maps help you find your current position. Markers below show the 1968 historic record.</p>
+
+    <label style="margin-top:18px">Vintage tint</label>
+    <select id="vintageToggle">
+      <option value="off">Off (clear modern look)</option>
+      <option value="on" selected>On — sepia tint for historic feel</option>
+    </select>
+    <p class="hint">Applies a warm sepia filter to the base map.</p>
+
+    <label style="margin-top:18px">Historic map image overlay (optional)</label>
+    <input type="text" id="overlayUrl" placeholder="https://…/tehran-1968-scan.jpg">
+    <div class="row" style="margin-top:6px">
+      <input type="number" id="overlaySouth" placeholder="South lat" step="0.0001">
+      <input type="number" id="overlayNorth" placeholder="North lat" step="0.0001">
+    </div>
+    <div class="row" style="margin-top:6px">
+      <input type="number" id="overlayWest" placeholder="West lng" step="0.0001">
+      <input type="number" id="overlayEast" placeholder="East lng" step="0.0001">
+    </div>
+    <p class="hint">If you have a scanned 1968 Tehran map, host the image (e.g. in this same GitHub repo) and enter its URL plus the lat/lng bounds of its four corners. It will overlay on the modern map.</p>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn sm primary" id="btnApplyOverlay">Apply overlay</button>
+      <button class="btn sm ghost" id="btnClearOverlay">Clear</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ============ ADMIN PANEL ============ -->
+<aside class="panel" id="panelAdmin" aria-label="Admin control panel">
+  <div class="panel-head">
+    <h2>Admin Control Panel</h2>
+    <button class="btn sm ghost" data-close>✕</button>
+  </div>
+  <div class="panel-body" id="adminBody">
+
+    <!-- Login gate -->
+    <div id="adminLogin">
+      <p class="hint" style="margin-top:0">Enter the admin password to add or edit points. The default password is <code>admin1968</code> — change it inside <code>index.html</code> (search for <code>ADMIN_PASSWORD</code>) before publishing.</p>
+      <label>Password</label>
+      <input type="password" id="adminPass" placeholder="admin1968">
+      <button class="btn primary" id="btnLogin" style="margin-top:12px;width:100%">Unlock</button>
+    </div>
+
+    <!-- Admin workspace (hidden until unlocked) -->
+    <div id="adminWork" style="display:none">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary sm" id="btnAdd">➕ Add point</button>
+        <button class="btn sm" id="btnExport">⬇️ Export JSON</button>
+        <button class="btn sm" id="btnImport">⬆️ Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+      </div>
+      <p class="hint" id="adminStats" style="margin-top:10px"></p>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+      <h3 style="font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">All points</h3>
+      <div id="adminList"></div>
+    </div>
+
+    <!-- Point editor (add/edit form) -->
+    <div id="pointForm" style="display:none">
+      <h3 style="font-size:14px;margin:0 0 8px" id="pointFormTitle">Add point</h3>
+      <p class="hint" id="pointFormHint">Click the map to set the location, or type coordinates below.</p>
+
+      <div class="row">
+        <div><label>Latitude</label><input id="fLat" type="number" step="0.000001" placeholder="35.6892"></div>
+        <div><label>Longitude</label><input id="fLng" type="number" step="0.000001" placeholder="51.3890"></div>
+      </div>
+
+      <label>Name</label>
+      <input id="fName" placeholder="e.g. Golestan Palace">
+
+      <div class="row">
+        <div><label>Year (built / relevant)</label><input id="fYear" placeholder="1968" type="number"></div>
+        <div><label>Category</label>
+          <select id="fCat">
+            <option value="palace">🏛️ Palace</option>
+            <option value="mosque">🕌 Mosque</option>
+            <option value="bazaar">🛍️ Bazaar</option>
+            <option value="museum">🖼️ Museum</option>
+            <option value="square">⬜ Square</option>
+            <option value="park">🌳 Park</option>
+            <option value="building">🏢 Building</option>
+            <option value="monument">🗽 Monument</option>
+            <option value="other">📍 Other</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Description</label>
+      <textarea id="fDesc" placeholder="History, what was here in 1968, notable facts…"></textarea>
+
+      <label>Photo URL (optional)</label>
+      <input id="fPhoto" placeholder="https://…/photo.jpg  (or images/photo.jpg in this repo)">
+      <p class="hint">Use a direct image link. To host your own, drop the file in your GitHub repo and reference it as <code>images/name.jpg</code>.</p>
+
+      <label>Source / credit (optional)</label>
+      <input id="fSource" placeholder="Book, archive, personal record…">
+
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn primary" id="btnSave">💾 Save point</button>
+        <button class="btn ghost" id="btnCancelForm">Cancel</button>
+      </div>
+    </div>
+  </div>
+</aside>
+</div><!-- /panelHost -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Tehran 1968 — Historic Map
+   Self-contained app. Data flow:
+   1) Try localStorage (admin's local edits) — highest priority
+   2) Else fetch('data.json') from the same folder (deployed on GitHub Pages)
+   3) Else fall back to SAMPLE_DATA embedded below
+   Admin edits are saved to localStorage; use "Export JSON" to download a
+   data.json you commit back to the repo so ALL visitors see the updates.
+   ============================================================ */
+
+const CONFIG = {
+  defaultCenter:   [35.6892, 51.3890],   // Tehran
+  defaultZoom:     12,
+  nearbyRadiusKm:  5,
+  ADMIN_PASSWORD:  "admin1968",          // <-- CHANGE before publishing
+  STORAGE_KEY:     "tehran1968_points_v1",
+  LS_FLAG:         "tehran1968_has_local_edits",
+};
+
+/* Category metadata */
+const CATEGORIES = {
+  palace:   {emoji:"🏛️", color:"#9a3412", label:"Palace"},
+  mosque:   {emoji:"🕌", color:"#1e6b54", label:"Mosque"},
+  bazaar:   {emoji:"🛍️", color:"#a16207", label:"Bazaar"},
+  museum:   {emoji:"🖼️", color:"#1d4ed8", label:"Museum"},
+  square:   {emoji:"⬜", color:"#475569", label:"Square"},
+  park:     {emoji:"🌳", color:"#15803d", label:"Park"},
+  building: {emoji:"🏢", color:"#334155", label:"Building"},
+  monument: {emoji:"🗽", color:"#7c2d12", label:"Monument"},
+  other:    {emoji:"📍", color:"#6b7280", label:"Other"},
+};
+
+/* Embedded sample data — used only if data.json can't be fetched.
+   These are well-known Tehran landmarks that existed in 1968.
+   REPLACE them with your own verified research via the admin panel
+   or by editing data.json. Coordinates are approximate. */
+const SAMPLE_DATA = [
+  {
+    id:"sample-golestan",
+    name:"Golestan Palace",
+    lat:35.6794, lng:51.4229,
+    year:1789, category:"palace",
+    description:"The royal Qajar palace complex in central Tehran. By 1968 it served as a ceremonial seat and museum of the Pahlavi court, surrounding the famous Marble Throne (Takht-e Marmar) and audience halls.",
+    photo:"", source:"Sample entry — replace with verified data",
+    sample:true
+  },
+  {
+    id:"sample-bazaar",
+    name:"Tehran Grand Bazaar",
+    lat:35.6753, lng:51.4225,
+    year:1600, category:"bazaar",
+    description:"A vast network of covered lanes, caravanserais and guild quarters stretching south of the Arg citadel. In 1968 it remained the commercial heart of the city, with merchants trading textiles, tea, spices, carpets and metalwork.",
+    photo:"", source:"Sample entry — replace with verified data",
+    sample:true
+  },
+  {
+    id:"sample-museum",
+    name:"Iran-e Bastan Museum (National Museum)",
+    lat:35.6886, lng:51.4319,
+    year:1937, category:"museum",
+    description:"Designed by André Godard and opened in 1937, this brick Sassanid-style building on Si-e Tir Street housed Iran's principal archaeological collection. In 1968 it displayed finds from Persepolis, Susa and other sites.",
+    photo:"", source:"Sample entry — replace with verified data",
+    sample:true
+  },
+  {
+    id:"sample-sadabad",
+    name:"Sa'dabad Complex",
+    lat:35.8103, lng:51.4253,
+    year:1920, category:"palace",
+    description:"Royal compound at the foot of the Alborz, developed by the Qajars and greatly expanded under Reza Shah and Mohammad Reza Pahlavi. By 1968 several palaces stood within its gardens; the Green Palace (Kakh-e Sabz) and White House were in use.",
+    photo:"", source:"Sample entry — replace with verified data",
+    sample:true
+  },
+  {
+    id:"sample-darband",
+    name:"Darband",
+    lat:35.8336, lng:51.4244,
+    year:1800, category:"other",
+    description:"The mountain gateway at the top of Tajrish, long the start of the trail into the Alborz. In 1968 it was already a popular summer escape with tea houses, fruit gardens and steep stone paths climbing toward Tochal.",
+    photo:"", source:"Sample entry — replace with verified data",
+    sample:true
+  },
+  {
+    id:"sample-shahabdolazim",
+    name:"Shah-Abdol-Azim Shrine",
+    lat:35.5917, lng:51.4394,
+    year:900, category:"other",
+    description:"The shrine of Abdol-Azim Hassani in the historic town of Rey, south of Tehran. A major pilgrimage site with a golden dome, courtyard and adjoining shrines of Imamzadeh Hamzeh and Naser al-Din Shah.",
+    photo:"", source:"Sample entry — replace with verified data",
+    sample:true
+  }
+];
+
+/* ===== State ===== */
+let map, markersLayer, userMarker, userCircle, overlayLayer = null;
+let currentBase = null, baseLayers = {};
+let allPoints = [];
+let userLatLng = null;
+let adminUnlocked = false;
+let addMode = false;
+let editingId = null;
+let pendingLatLng = null;     // clicked point while adding
+let selectedMarkerId = null;
+
+/* ===== Utilities ===== */
+function $(id){return document.getElementById(id)}
+function toast(msg, isErr=false){
+  const t=$("toast"); t.textContent=msg; t.classList.toggle("err",isErr);
+  t.classList.add("show"); clearTimeout(window.__tt);
+  window.__tt=setTimeout(()=>t.classList.remove("show"),2600);
+}
+function uid(){return "p_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function haversineKm(a,b){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+/* ===== Map setup ===== */
+function initMap(){
+  map = L.map("map",{zoomControl:true, minZoom:2, maxZoom:19}).setView(CONFIG.defaultCenter, CONFIG.defaultZoom);
+
+  baseLayers.osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
+  });
+  baseLayers.satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{
+    maxZoom:19, attribution:'Imagery &copy; Esri'
+  });
+  baseLayers.topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{
+    maxZoom:17, attribution:'&copy; OpenTopoMap (CC-BY-SA)'
+  });
+  currentBase = baseLayers.osm;
+  currentBase.addTo(map);
+
+  markersLayer = L.layerGroup().addTo(map);
+
+  // Click on map in add mode -> capture point
+  map.on("click", (e)=>{
+    if(!addMode) return;
+    pendingLatLng = e.latlng;
+    $("fLat").value = e.latlng.lat.toFixed(6);
+    $("fLng").value = e.latlng.lng.toFixed(6);
+    toast("Location set — fill in the details and Save.");
+  });
+
+  // ESC cancels add mode
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape" && addMode){ exitAddMode(); }
+  });
+}
+
+function setBaseLayer(key){
+  if(currentBase) map.removeLayer(currentBase);
+  currentBase = baseLayers[key] || baseLayers.osm;
+  currentBase.addTo(map);
+  if(overlayLayer) overlayLayer.bringToFront();
+}
+
+function applyVintage(on){
+  $("map").classList.toggle("vintage", on);
+}
+
+function pinIcon(category, selected=false){
+  const cat = CATEGORIES[category]||CATEGORIES.other;
+  const sel = selected ? " selected" : "";
+  return L.divIcon({
+    className:"", iconSize:[32,42], iconAnchor:[16,42], popupAnchor:[0,-40],
+    html:`<div class="pin${sel}"><div class="body" style="background:${cat.color}"></div><div class="emo">${cat.emoji}</div></div>`
+  });
+}
+
+/* ===== Data loading ===== */
+async function loadData(){
+  // 1) localStorage (admin edits win)
+  if(localStorage.getItem(CONFIG.LS_FLAG)==="1"){
+    try{
+      const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+      if(raw){ allPoints = JSON.parse(raw); return; }
+    }catch(e){ console.warn("Bad local store, ignoring"); }
+  }
+  // 2) data.json from same folder
+  try{
+    const res = await fetch("data.json", {cache:"no-store"});
+    if(res.ok){
+      const json = await res.json();
+      if(Array.isArray(json)){ allPoints = json; return; }
+    }
+  }catch(e){ /* file:// or 404 — fall through */ }
+  // 3) embedded sample
+  allPoints = SAMPLE_DATA.slice();
+  if(location.protocol==="file:"){
+    toast("Opened locally — showing embedded sample data.", true);
+  }
+}
+
+function saveLocal(){
+  localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(allPoints));
+  localStorage.setItem(CONFIG.LS_FLAG, "1");
+}
+
+/* ===== Render markers ===== */
+function renderMarkers(){
+  markersLayer.clearLayers();
+  allPoints.forEach(p=>{
+    const cat = CATEGORIES[p.category]||CATEGORIES.other;
+    const m = L.marker([p.lat,p.lng],{icon:pinIcon(p.category, p.id===selectedMarkerId)});
+    m.bindPopup(popupHtml(p), {maxWidth:280});
+    m.on("popupopen",()=>{ selectedMarkerId=p.id; renderMarkers(); });
+    m.on("popupclose",()=>{ /* keep selection while open */ });
+    m.addTo(markersLayer);
+  });
+}
+
+function popupHtml(p){
+  const cat = CATEGORIES[p.category]||CATEGORIES.other;
+  const photo = p.photo
+    ? `<img class="photo" src="${escapeHtml(p.photo)}" alt="${escapeHtml(p.name)}" onerror="this.style.display='none'">`
+    : "";
+  const year = p.year ? `<span class="year">${escapeHtml(String(p.year))}</span>` : "";
+  const source = p.source ? `<div class="hint" style="margin-top:6px">Source: ${escapeHtml(p.source)}</div>` : "";
+  return `
+    <h3>${escapeHtml(p.name)}</h3>
+    <span class="badge">${cat.emoji} ${cat.label}</span> ${year}
+    ${photo}
+    <div class="desc">${escapeHtml(p.description)}</div>
+    ${source}
+  `;
+}
+
+/* ===== Geolocation ===== */
+function locateUser(){
+  if(!navigator.geolocation){ toast("Geolocation not supported on this device.",true); return; }
+  toast("Locating…");
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      userLatLng = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+      const acc = pos.coords.accuracy || 50;
+      if(userMarker) map.removeLayer(userMarker);
+      if(userCircle) map.removeLayer(userCircle);
+      userCircle = L.circle([userLatLng.lat,userLatLng.lng],{radius:acc,color:"#15803d",fillColor:"#15803d",fillOpacity:.12,weight:1}).addTo(map);
+      userMarker = L.marker([userLatLng.lat,userLatLng.lng],{
+        icon:L.divIcon({className:"",iconSize:[24,24],iconAnchor:[12,12],html:`<div style="width:18px;height:18px;border-radius:50%;background:#15803d;border:3px solid #fff;box-shadow:0 0 0 2px #15803d"></div>`})
+      }).addTo(map).bindPopup("You are here");
+      map.flyTo([userLatLng.lat,userLatLng.lng], 15, {duration:.8});
+      toast("Found you.");
+      if($("panelNearby").classList.contains("open")) renderNearby();
+    },
+    (err)=>{
+      toast("Could not get location: "+(err.message||"permission denied"),true);
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:30000}
+  );
+}
+
+/* ===== Nearby list ===== */
+function renderNearby(){
+  const body = $("nearbyList");
+  const hint = $("nearbyHint");
+  const r = parseFloat($("nearbyRadius").value);
+  body.innerHTML = "";
+  if(!userLatLng){
+    hint.innerHTML = "Tap <b>Find me</b> first, then reopen this panel.";
+    return;
+  }
+  hint.style.display = "none";
+  const items = allPoints
+    .map(p=>({p, d:haversineKm(userLatLng,p)}))
+    .filter(x=>x.d<=r)
+    .sort((a,b)=>a.d-b.d);
+  if(!items.length){
+    body.innerHTML = `<p class="hint">No historic places within the selected radius. Try a larger radius.</p>`;
+    return;
+  }
+  items.forEach(({p,d})=>{
+    const cat = CATEGORIES[p.category]||CATEGORIES.other;
+    const el = document.createElement("div");
+    el.className = "near-item";
+    el.innerHTML = `
+      <div class="emoji">${cat.emoji}</div>
+      <div class="meta">
+        <div class="name">${escapeHtml(p.name)} ${p.year?`<span class="badge">${escapeHtml(String(p.year))}</span>`:""}</div>
+        <div class="desc">${escapeHtml(p.description)}</div>
+        <div class="dist">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</div>
+      </div>`;
+    el.onclick = ()=>{
+      map.flyTo([p.lat,p.lng],16,{duration:.6});
+      markersLayer.eachLayer(m=>{
+        const ll=m.getLatLng();
+        if(Math.abs(ll.lat-p.lat)<1e-6 && Math.abs(ll.lng-p.lng)<1e-6){
+          setTimeout(()=>m.openPopup(),300);
+        }
+      });
+    };
+    body.appendChild(el);
+  });
+}
+
+/* ===== Panels ===== */
+function openPanel(id){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("open"));
+  $(id).classList.add("open");
+}
+function closePanels(){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("open"));
+}
+
+/* ===== Admin ===== */
+function tryLogin(){
+  const pass = $("adminPass").value;
+  if(pass === CONFIG.ADMIN_PASSWORD){
+    adminUnlocked = true;
+    $("adminLogin").style.display = "none";
+    $("adminWork").style.display = "block";
+    renderAdminList();
+    toast("Admin unlocked.");
+  }else{
+    toast("Wrong password.",true);
+  }
+}
+
+function renderAdminList(){
+  const body = $("adminList");
+  body.innerHTML = "";
+  $("adminStats").textContent = `${allPoints.length} point(s). Edits are saved to this browser; use Export JSON to publish them.`;
+  allPoints.forEach(p=>{
+    const cat = CATEGORIES[p.category]||CATEGORIES.other;
+    const el = document.createElement("div");
+    el.className = "pt-item";
+    el.innerHTML = `
+      <div class="emoji">${cat.emoji}</div>
+      <div class="meta">
+        <div class="name">${escapeHtml(p.name)}${p.sample?' <span class="badge">sample</span>':""}</div>
+        <div class="sub">${p.year?escapeHtml(String(p.year))+" · ":""}${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+      </div>
+      <button class="btn sm ghost" data-edit>Edit</button>
+      <button class="btn sm danger" data-del>Del</button>`;
+    el.querySelector("[data-edit]").onclick = ()=>startEdit(p.id);
+    el.querySelector("[data-del]").onclick = ()=>deletePoint(p.id);
+    body.appendChild(el);
+  });
+}
+
+function enterAddMode(){
+  if(!adminUnlocked) return;
+  editingId = null;
+  pendingLatLng = null;
+  showForm("Add point", "Click the map to set the location, or type coordinates below.");
+  addMode = true;
+  $("map").classList.add("adding");
+  // clear form
+  ["fName","fLat","fLng","fYear","fDesc","fPhoto","fSource"].forEach(id=>$(id).value="");
+  $("fCat").value = "palace";
+  $("fLat").value=""; $("fLng").value="";
+  toast("Click the map where the historic place is.");
+}
+function exitAddMode(){
+  addMode = false;
+  $("map").classList.remove("adding");
+}
+
+function showForm(title, hint){
+  $("adminWork").style.display = "none";
+  $("pointForm").style.display = "block";
+  $("pointFormTitle").textContent = title;
+  $("pointFormHint").textContent = hint;
+}
+function hideForm(){
+  $("pointForm").style.display = "none";
+  $("adminWork").style.display = "block";
+  exitAddMode();
+}
+
+function startEdit(id){
+  const p = allPoints.find(x=>x.id===id);
+  if(!p) return;
+  editingId = id; addMode = false;
+  $("map").classList.remove("adding");
+  showForm("Edit point", "Update the details below. To move the point, change the coordinates.");
+  $("fLat").value = p.lat; $("fLng").value = p.lng;
+  $("fName").value = p.name || "";
+  $("fYear").value = p.year || "";
+  $("fCat").value = p.category || "other";
+  $("fDesc").value = p.description || "";
+  $("fPhoto").value = p.photo || "";
+  $("fSource").value = p.source || "";
+  pendingLatLng = {lat:p.lat, lng:p.lng};
+}
+
+function savePoint(){
+  const name = $("fName").value.trim();
+  const lat = parseFloat($("fLat").value);
+  const lng = parseFloat($("fLng").value);
+  if(!name){ toast("Name is required.",true); return; }
+  if(!isFinite(lat)||!isFinite(lng)||lat<-90||lat>90||lng<-180||lng>180){
+    toast("Enter valid latitude / longitude.",true); return;
+  }
+  const point = {
+    id: editingId || uid(),
+    name,
+    lat, lng,
+    year: $("fYear").value ? parseInt($("fYear").value,10) : null,
+    category: $("fCat").value,
+    description: $("fDesc").value.trim(),
+    photo: $("fPhoto").value.trim(),
+    source: $("fSource").value.trim(),
+    sample:false
+  };
+  if(editingId){
+    const i = allPoints.findIndex(p=>p.id===editingId);
+    if(i>=0) allPoints[i] = point;
+  }else{
+    allPoints.push(point);
+  }
+  saveLocal();
+  renderMarkers();
+  renderAdminList();
+  hideForm();
+  toast("Point saved (to this browser). Export JSON to publish.");
+}
+
+function deletePoint(id){
+  if(!confirm("Delete this point?")) return;
+  allPoints = allPoints.filter(p=>p.id!==id);
+  saveLocal();
+  renderMarkers();
+  renderAdminList();
+  toast("Point deleted.");
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(allPoints,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "data.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast("Downloaded data.json — commit it to your repo to publish.");
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const arr = JSON.parse(reader.result);
+      if(!Array.isArray(arr)) throw new Error("not an array");
+      if(!confirm(`Replace your current ${allPoints.length} point(s) with ${arr.length} imported point(s)?`)) return;
+      arr.forEach(p=>{ if(!p.id) p.id = uid(); });
+      allPoints = arr;
+      saveLocal();
+      renderMarkers();
+      renderAdminList();
+      toast("Imported "+arr.length+" points.");
+    }catch(e){
+      toast("Could not read JSON: "+e.message,true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ===== Historic map image overlay ===== */
+function applyOverlay(){
+  const url = $("overlayUrl").value.trim();
+  const s=parseFloat($("overlaySouth").value), n=parseFloat($("overlayNorth").value);
+  const w=parseFloat($("overlayWest").value), e=parseFloat($("overlayEast").value);
+  if(!url || ![s,n,w,e].every(isFinite)){
+    toast("Enter the image URL and all four corner coordinates.",true); return;
+  }
+  if(overlayLayer) map.removeLayer(overlayLayer);
+  overlayLayer = L.imageOverlay(url, [[s,w],[n,e]], {opacity:.75}).addTo(map);
+  map.flyTo([(s+n)/2,(w+e)/2], 13);
+  toast("Overlay applied.");
+}
+function clearOverlay(){
+  if(overlayLayer){ map.removeLayer(overlayLayer); overlayLayer=null; toast("Overlay cleared."); }
+}
+
+/* ===== Wire up events ===== */
+function wireEvents(){
+  // Top bar
+  $("btnLocate").onclick = locateUser;
+  $("btnLocate2").onclick = locateUser;
+  $("btnHome").onclick = ()=>map.flyTo(CONFIG.defaultCenter, CONFIG.defaultZoom, {duration:.6});
+  $("btnNearby").onclick = ()=>{ openPanel("panelNearby"); renderNearby(); };
+  $("btnLayers").onclick = ()=>openPanel("panelLayers");
+  $("btnAdmin").onclick = ()=>openPanel("panelAdmin");
+
+  // Panel close
+  document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closePanels);
+
+  // Nearby radius
+  $("nearbyRadius").onchange = renderNearby;
+
+  // Layers
+  $("baseLayer").onchange = (e)=>setBaseLayer(e.target.value);
+  $("vintageToggle").onchange = (e)=>applyVintage(e.target.value==="on");
+  $("btnApplyOverlay").onclick = applyOverlay;
+  $("btnClearOverlay").onclick = clearOverlay;
+  // vintage default on
+  applyVintage(true);
+
+  // Admin
+  $("btnLogin").onclick = tryLogin;
+  $("adminPass").addEventListener("keydown",e=>{if(e.key==="Enter")tryLogin()});
+  $("btnAdd").onclick = enterAddMode;
+  $("btnExport").onclick = exportData;
+  $("btnImport").onclick = ()=>$("importFile").click();
+  $("importFile").onchange = (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
+  $("btnSave").onclick = savePoint;
+  $("btnCancelForm").onclick = hideForm;
+}
+
+/* ===== Boot ===== */
+(async function init(){
+  initMap();
+  await loadData();
+  renderMarkers();
+  wireEvents();
+})();
+</script>
+</body>
+</html>
