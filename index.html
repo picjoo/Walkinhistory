@@ -1308,7 +1308,7 @@ async function fetchGeotiffBuffer(url){
     throw new Error("This GeoTIFF URL is http:// but the site is https:// (mixed content, blocked). Use an https:// URL, or host the .tif in your repo and use a relative path like maps/name.tif.");
   let directErr;
   try{
-    const res = await fetchWithTimeout(url, 10000);
+    const res = await fetchWithTimeout(url, 60000); // large GeoTIFFs (e.g. 20 MB+) need a generous timeout
     if(res.ok) return await res.arrayBuffer();
     directErr = "HTTP " + res.status;
   }catch(e){ directErr = (e && e.name==="AbortError") ? "timeout" : ((e && e.message) ? e.message : "network error"); }
