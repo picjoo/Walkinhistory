@@ -450,6 +450,12 @@
       <input id="ovUrl" placeholder="https://tiles.georeferencer.com/abc/{z}/{x}/{y}.png">
       <p class="hint" id="ovUrlHint"></p>
 
+      <div id="ovFileRow" style="display:none;margin-top:6px">
+        <label>…or load a <code>.tif</code> from this device <span style="color:var(--muted);font-weight:400">(stored in this browser — bypasses CORS)</span></label>
+        <input type="file" id="ovFile" accept=".tif,.tiff,image/tiff,application/tiff,application/x-tiff" style="font-size:12px">
+        <p class="hint" id="ovFileNote" style="margin:4px 0 0"></p>
+      </div>
+
       <div id="ovBoundsRow" style="display:none">
         <label>Corner bounds (lat/lng of the image edges)</label>
         <div class="row" style="margin-top:6px">
@@ -614,6 +620,8 @@ let allOverlays = [];           // historic map overlays (admin-managed)
 let overlayLayers = {};         // id -> Leaflet layer currently on the map
 let geotiffLibs = null;         // lazy-loaded promise for georaster libs
 let previewLayer = null;        // temp layer shown by the overlay editor's Preview
+let pendingOvFileUrl = null;    // data: URL of a .tif picked in the overlay form
+let pendingOvFileName = null;   // filename of the picked .tif (for display)
 let userLatLng = null;
 let adminUnlocked = false;
 let addMode = false;
@@ -733,8 +741,12 @@ async function loadData(){
 }
 
 function saveLocal(){
-  localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({points: allPoints, overlays: allOverlays}));
-  localStorage.setItem(CONFIG.LS_FLAG, "1");
+  try{
+    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({points: allPoints, overlays: allOverlays}));
+    localStorage.setItem(CONFIG.LS_FLAG, "1");
+  }catch(e){
+    toast("Could not save to this browser — storage is full (a file-loaded .tif may be too large). Export JSON to publish, or host the .tif in your repo and use its path.", true);
+  }
 }
 
 /* ===== Render markers ===== */
@@ -1488,6 +1500,12 @@ function clearOverlayForm(){
   $("ovOpacityPct").textContent = "70%";
   $("ovDefault").checked = false;
   $("ovAttribution").value = "";
+  pendingOvFileUrl = null;
+  pendingOvFileName = null;
+  const ovFile = $("ovFile");
+  if(ovFile) ovFile.value = "";
+  const ovFileNote = $("ovFileNote");
+  if(ovFileNote) ovFileNote.textContent = "";
   onOverlayTypeChange();
 }
 
@@ -1496,19 +1514,45 @@ function onOverlayTypeChange(){
   const urlLabel = $("ovUrlLabel");
   const bounds = $("ovBoundsRow");
   const hint = $("ovUrlHint");
+  const fileRow = $("ovFileRow");
   if(t==="tile"){
     urlLabel.textContent = "Tile URL (XYZ — contains {z}/{x}/{y})";
     bounds.style.display = "none";
+    if(fileRow) fileRow.style.display = "none";
     hint.innerHTML = `From Georeferencer's map page: <code>Export → Tiles</code>. Looks like <code>https://tiles.georeferencer.com/abc/{z}/{x}/{y}.png</code>.`;
   }else if(t==="image"){
     urlLabel.textContent = "Image URL";
     bounds.style.display = "block";
+    if(fileRow) fileRow.style.display = "none";
     hint.innerHTML = `A plain scanned image. Enter its URL and the lat/lng of its four corners so it lines up.`;
   }else{ // geotiff
     urlLabel.textContent = "GeoTIFF path / URL";
     bounds.style.display = "none";
-    hint.innerHTML = `A GeoTIFF can't be drawn by the browser like a normal image, so it's fetched and parsed client-side — which means CORS applies. Most reliable: put the <code>.tif</code> in your repo and enter a <b>relative path</b> (e.g. <code>maps/tehran-1968.tif</code>) or its <code>https://raw.githubusercontent.com/…/maps/tehran-1968.tif</code> URL. External <code>https://</code> URLs also work if the host allows cross-origin access; otherwise the site retries through a public CORS proxy (best-effort). Bounds are read from the file. For Georeferencer maps, a <b>tile layer</b> is simpler and has no CORS limits.`;
+    if(fileRow) fileRow.style.display = "block";
+    hint.innerHTML = `A GeoTIFF must be fetched + parsed client-side, so CORS applies to URLs. <b>Easiest:</b> click <b>Choose file</b> below and pick your <code>.tif</code> — it loads directly from this device (no CORS, no download). Or put the <code>.tif</code> in your repo and enter a <b>relative path</b> (e.g. <code>maps/tehran-1968.tif</code>) or its <code>https://raw.githubusercontent.com/…/maps/tehran-1968.tif</code> URL. External <code>https://</code> URLs work if the host allows cross-origin access; otherwise the site retries via a public CORS proxy (best-effort). Bounds come from the file. For Georeferencer maps, a <b>tile layer</b> is simplest.`;
   }
+}
+
+/* User picked a .tif file in the overlay form → read it as a data: URL so it can
+   be fetched same-origin (no CORS) and stored in this browser. */
+function onOvFileChange(input){
+  const note = $("ovFileNote");
+  const f = input.files && input.files[0];
+  if(!f){ pendingOvFileUrl=null; pendingOvFileName=null; if(note) note.textContent=""; return; }
+  if(f.size > 4*1024*1024){
+    pendingOvFileUrl=null; pendingOvFileName=null; input.value="";
+    if(note) note.innerHTML = `<b>${escapeHtml(f.name)}</b> is ${(f.size/1048576).toFixed(1)} MB — too large to store in the browser. Host it in your repo (e.g. <code>maps/${f.name.replace(/\s+/g,"-")}</code>) and enter that path in the URL field instead.`;
+    return;
+  }
+  const r = new FileReader();
+  r.onload = ()=>{
+    pendingOvFileUrl = r.result;
+    pendingOvFileName = f.name;
+    $("ovUrl").value = "";  // file takes precedence over the URL field
+    if(note) note.innerHTML = `Loaded <b>${escapeHtml(f.name)}</b> (${(f.size/1024).toFixed(0)} KB). Stored in this browser — Export JSON to publish it.`;
+  };
+  r.onerror = ()=>{ pendingOvFileUrl=null; if(note) note.textContent="Could not read that file. Try again."; };
+  r.readAsDataURL(f);
 }
 
 function enterAddOverlay(){
@@ -1527,7 +1571,14 @@ function startEditOverlay(id){
   $("overlayFormTitle").textContent = "Edit overlay";
   $("ovName").value = ov.name;
   $("ovType").value = ov.type;
-  $("ovUrl").value = ov.url;
+  $("ovUrl").value = (typeof ov.url==="string" && ov.url.indexOf("data:")===0) ? "" : ov.url;
+  // restore a previously saved file-loaded .tif (stored as a data: URL)
+  if(typeof ov.url==="string" && ov.url.indexOf("data:")===0){
+    pendingOvFileUrl = ov.url;
+    pendingOvFileName = "saved .tif";
+    const note = $("ovFileNote");
+    if(note) note.innerHTML = `Loaded <b>saved .tif</b> from this browser's data. Pick a new file to replace it.`;
+  }
   if(ov.type==="image" && ov.bounds){
     $("ovSouth").value = ov.bounds[0][0];
     $("ovWest").value  = ov.bounds[0][1];
@@ -1545,9 +1596,9 @@ function startEditOverlay(id){
 function collectOverlay(){
   const name = $("ovName").value.trim();
   const type = $("ovType").value;
-  const url = $("ovUrl").value.trim();
+  const url = (pendingOvFileUrl && type==="geotiff") ? pendingOvFileUrl : $("ovUrl").value.trim();
   if(!name){ toast("Overlay name is required.",true); return null; }
-  if(!url){ toast("Overlay URL / path is required.",true); return null; }
+  if(!url){ toast("Overlay URL / path is required (or pick a .tif file).",true); return null; }
   const ov = { id: editingOverlayId || ("ov_"+Math.random().toString(36).slice(2,9)), name, type, url,
     opacity: parseFloat($("ovOpacity").value), defaultOn: $("ovDefault").checked,
     attribution: $("ovAttribution").value.trim() };
@@ -1640,6 +1691,8 @@ function wireEvents(){
   $("btnCancelOverlay").onclick = hideOverlayForm;
   $("btnPreviewOverlay").onclick = previewOverlay;
   $("ovType").onchange = onOverlayTypeChange;
+  const ovFileEl = $("ovFile");
+  if(ovFileEl) ovFileEl.onchange = ()=>onOvFileChange(ovFileEl);
   $("ovOpacity").oninput = (e)=>{ $("ovOpacityPct").textContent = Math.round(parseFloat(e.target.value)*100)+"%"; };
 
   // Admin
