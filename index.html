@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Walk in The history</title>
+<title>Tehran 1968 — Historic Map</title>
 
 <!-- Leaflet (free, open-source map library) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -1264,6 +1264,58 @@ function loadGeotiffLibs(){
   return geotiffLibs;
 }
 
+/* Fetch the bytes of a GeoTIFF for client-side parsing.
+   A .tif can't be drawn by the browser like a normal image, so we must fetch()
+   its bytes and hand them to georaster. fetch() is subject to CORS, which is why
+   a cross-origin .tif on a host that doesn't send Access-Control-Allow-Origin
+   fails with "Failed to fetch". We:
+     1) guard mixed content (https site vs http url),
+     2) try the URL directly (works for same-origin / CORS-enabled hosts — e.g. a
+        .tif in your own repo via a relative path or raw.githubusercontent.com),
+     3) as a last resort, retry through public CORS proxies so external URLs on
+        non-CORS hosts can still load. The proxies are best-effort and may be
+        rate-limited; if every attempt fails we throw an actionable message. */
+const GEOTIFF_CORS_PROXIES = [
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u)
+];
+function urlIsCrossOrigin(url){
+  if(!/^https?:\/\//i.test(url)) return false;   // data:/blob:/relative paths are fine
+  try{ const u = new URL(url); return u.origin !== location.origin; }
+  catch(e){ return false; }
+}
+/* fetch with an AbortController timeout so an unreachable host or a dead proxy
+   doesn't make the user wait minutes for the error. */
+function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url, {signal:ctrl.signal}).finally(()=>clearTimeout(id));
+}
+async function fetchGeotiffBuffer(url){
+  if(location.protocol === "https:" && /^http:\/\//i.test(url))
+    throw new Error("This GeoTIFF URL is http:// but the site is https:// (mixed content, blocked). Use an https:// URL, or host the .tif in your repo and use a relative path like maps/name.tif.");
+  let directErr;
+  try{
+    const res = await fetchWithTimeout(url, 10000);
+    if(res.ok) return await res.arrayBuffer();
+    directErr = "HTTP " + res.status;
+  }catch(e){ directErr = (e && e.name==="AbortError") ? "timeout" : ((e && e.message) ? e.message : "network error"); }
+  if(!urlIsCrossOrigin(url))
+    throw new Error("Could not fetch the GeoTIFF (" + directErr + "). Check the URL/path is correct.");
+  // Cross-origin + direct fetch failed → try public CORS proxies (best-effort).
+  toast("Host blocked cross-origin access — retrying via a public CORS proxy…");
+  for(const make of GEOTIFF_CORS_PROXIES){
+    try{
+      const pr = await fetchWithTimeout(make(url), 8000);
+      if(pr.ok){
+        const buf = await pr.arrayBuffer();
+        if(buf && buf.byteLength > 0) return buf;
+      }
+    }catch(e){ /* try next proxy */ }
+  }
+  throw new Error("Could not fetch the GeoTIFF — the host blocks cross-origin requests (CORS) and the public proxies are unavailable. Reliable fix: put the .tif in your repo and use a relative path (e.g. maps/name.tif), or use a tile-layer URL from Georeferencer instead of the .tif.");
+}
+
 /* Build a Leaflet layer for an overlay. Tile/image are sync; geotiff is async. */
 function createOverlayLayer(ov){
   if(ov.type==="tile"){
@@ -1279,9 +1331,7 @@ function createOverlayLayer(ov){
       await loadGeotiffLibs();
       let geo = georasterCache[ov.id];
       if(!geo){
-        const res = await fetch(ov.url);
-        if(!res.ok) throw new Error("Could not fetch "+ov.url+" ("+res.status+")");
-        const buf = await res.arrayBuffer();
+        const buf = await fetchGeotiffBuffer(ov.url);
         geo = await window.parseGeoraster(buf);
         georasterCache[ov.id] = geo;
       }
@@ -1457,7 +1507,7 @@ function onOverlayTypeChange(){
   }else{ // geotiff
     urlLabel.textContent = "GeoTIFF path / URL";
     bounds.style.display = "none";
-    hint.innerHTML = `Upload the <code>.tif</code> into your repo (e.g. <code>maps/tehran-1968.tif</code>) and enter that path, or any <code>https://</code> URL. Bounds are read automatically from the file.`;
+    hint.innerHTML = `A GeoTIFF can't be drawn by the browser like a normal image, so it's fetched and parsed client-side — which means CORS applies. Most reliable: put the <code>.tif</code> in your repo and enter a <b>relative path</b> (e.g. <code>maps/tehran-1968.tif</code>) or its <code>https://raw.githubusercontent.com/…/maps/tehran-1968.tif</code> URL. External <code>https://</code> URLs also work if the host allows cross-origin access; otherwise the site retries through a public CORS proxy (best-effort). Bounds are read from the file. For Georeferencer maps, a <b>tile layer</b> is simpler and has no CORS limits.`;
   }
 }
 
